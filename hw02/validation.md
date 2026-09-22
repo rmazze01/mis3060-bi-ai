@@ -137,6 +137,6 @@ Claude correctly predicted which two charts had legends (the histogram and scatt
 6) Prompt A: 83,556  
 Prompt B: 83,556   
 7) The resulted agreed from both scripts.   
-8) Verifying a count by subtraction rather than direct filter because it can catch labeling errors. For example, if you sorted by "Buy" you would only get a count of rows with txn_type "Buy". However if you used the subtraction method and took out "Sell", "Deposit", "Withdrawl", "Dividend", and "Advisory Fee" you would get both rows with "Buy" and possibly rows that were meant to be "Buy" but had a data entry error (ex: "buy" or "By"). While using both the direct filter and subtraction methods are best to gain more assurance over the results, the subtraction method helps capture data entry errors the direct filter method would not. 
+8) Verifying a count by subtraction rather than direct filter can catch labeling errors. For example, if you sorted by "Buy" you would only get a count of rows with txn_type "Buy". However if you used the subtraction method and took out "Sell", "Deposit", "Withdrawl", "Dividend", and "Advisory Fee" you would get both rows with "Buy" and possibly rows that were meant to be "Buy" but had a data entry error (ex: "buy" or "By"). While using both the direct filter and subtraction methods are best to gain more assurance over the results, the subtraction method helps capture data entry errors the direct filter method would not. 
 
 
