@@ -99,6 +99,7 @@ else:
 | Net Income | 27.7 billion | $27.75 billion | Yes (slight rounding difference) |
 
 **If the sources disagree, most likely reason (period mismatch, metric definition difference, or extraction error):**
+N/A — the sources agree. The small differences (77.7 vs. 77.67 billion revenue, 27.7 vs. 27.75 billion net income) are rounding, because the 8-K press release rounds to one decimal in billions.
 
 ---
 
