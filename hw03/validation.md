@@ -63,7 +63,6 @@ Also reported by ABC News: https://abcnews.com/US/apple-ceo-tim-cook-stepping-jo
 **Second source:** Yahoo Finance
 
 
-
 | Metric | From 8-K text extraction | From yfinance | Match? |
 |---|---|---|---|
 | Revenue | 77.7 billion | $77.67 billion | Yes (slight rounding difference) |
