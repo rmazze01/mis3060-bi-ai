@@ -62,36 +62,6 @@ Also reported by ABC News: https://abcnews.com/US/apple-ceo-tim-cook-stepping-jo
 **Company / Quarter (same as 5A):** Microsoft Corporation (MSFT), Fiscal Q1 2026 (quarter ended September 30, 2025)
 **Second source:** Yahoo Finance
 
-**Prompt used:**
-> "Write Python using yfinance to get the most recent quarterly revenue and net income for [ticker]."
-
-**yfinance code:**
-
-```python
-import yfinance as yf
-
-ticker = yf.Ticker("MSFT")
-income = ticker.quarterly_income_stmt  # columns = quarter-end dates, newest first
-
-# Most recent quarter
-latest = income.columns[0]
-revenue = income.loc["Total Revenue", latest]
-net_income = income.loc["Net Income", latest]
-
-print(f"MSFT most recent quarter (ended {latest.date()}):")
-print(f"  Revenue:    ${revenue / 1e9:,.2f} billion")
-print(f"  Net Income: ${net_income / 1e9:,.2f} billion")
-
-# Quarter used in 5A/5C: fiscal Q1 2026 (ended September 30, 2025)
-target = [c for c in income.columns if str(c.date()) == "2025-09-30"]
-if target:
-    q = target[0]
-    print(f"\nMSFT fiscal Q1 2026 (ended {q.date()}):")
-    print(f"  Revenue:    ${income.loc['Total Revenue', q] / 1e9:,.2f} billion")
-    print(f"  Net Income: ${income.loc['Net Income', q] / 1e9:,.2f} billion")
-else:
-    print("\nQuarter ended 2025-09-30 not in yfinance's quarterly data.")
-```
 
 | Metric | From 8-K text extraction | From yfinance | Match? |
 |---|---|---|---|
