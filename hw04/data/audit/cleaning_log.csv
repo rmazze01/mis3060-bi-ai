@@ -1,0 +1,24 @@
+table,issue,action,rows_affected,note
+fact_transactions,D01 orphan client_id (200 clients not in dim_client),quarantine,200,"moved to quarantine_fact_transactions_orphan_client.csv; amount $10,888,495; clean=298,572"
+fact_transactions,D02 security_id stored as float text ('45.0'),convert,197044,trailing .0 removed; 0% -> 100% text match with dim_security; blanks (cash flows) untouched
+fact_transactions,D05 negative shares on Buy rows,convert,835,shares = abs(shares); amount = shares x price now holds on every row (tolerance $1.00)
+fact_portfolio_snapshot,D03 return_ytd stored as percent text,convert,300,"stripped %, divided by 100 (exact Decimal shift); reconciled to benchmark_return_ytd + active_alpha_ytd, max diff 0.000050"
+dim_client,D04 state: full names mixed with USPS codes,standardize,78,"7-name mapping (PA, FL, NY, NJ, CA, IL, TX); per-state totals = raw codes + raw names"
+fact_portfolio_snapshot,D06 return_ytd above +500% (implausible),flag,312,"flag_return_ytd_outlier=1; value NOT changed (return and AUM history disagree, no source to correct from)"
+fact_portfolio_snapshot,"D07 aum at exactly 1,000 (upstream floor)",flag,420,flag_aum_at_floor=1; value NOT changed (true AUM unknown)
+fact_fees,"D07 aum_basis at exactly 1,000 (upstream floor)",flag,386,flag_aum_basis_at_floor=1; value NOT changed; all rows reconcile to flagged snapshot months
+dim_client,D08 risk_profile blank,flag,76,"flag_risk_profile_missing=1; NOT filled (benchmark pattern may be a default, not evidence)"
+dim_security,D09 sector / expense_ratio_bps blank,leave as is,0,219 blank sectors = ETFs; 281 blank expense ratios = non-ETFs; 0 exceptions
+fact_transactions,D10 security_id / shares / price blank,leave as is,0,"101,528 blanks = exactly the Deposit/Withdrawal/Advisory Fee rows; every trade row complete"
+dim_advisor,D11 certifications = literal text 'None',leave as is,0,"6 advisors; legitimate category (no certification), not a null"
+dim_security,D12 duplicated security names,leave as is,0,"6 securities / 3 names; ids, tickers and attributes differ"
+fact_fees,D13 bps_charged above 100 (one row),leave as is,0,1 row(s); amount reconciles to aum_basis x bps / 120000
+dim_client,D14 clients with no facts,leave as is,0,25 clients (valid reference data)
+fact_transactions,D15 Buy/Sell on non-trading days,leave as is,0,"40,630 of 143,218 Buy/Sell rows; same ~28% share for every transaction type"
+fact_transactions / fact_fees,D16 advisory fee debits vs fee table,leave as is,0,"transaction debits $263,709,737 vs fee table $204,675,583; no source of truth"
+fact_portfolio_snapshot,D17 snapshot months with no fee row,leave as is,0,"7,350 snapshot rows"
+fact_fees,D18 fee_type changes month to month,leave as is,0,type changes in 57.5% of month-to-month steps
+dim_advisor,No defects requiring a fix,none (identical to raw),0,clean file equals raw file
+dim_benchmark,No defects requiring a fix,none (identical to raw),0,clean file equals raw file
+dim_date,No defects requiring a fix,none (identical to raw),0,clean file equals raw file
+dim_security,No defects requiring a fix,none (identical to raw),0,clean file equals raw file
