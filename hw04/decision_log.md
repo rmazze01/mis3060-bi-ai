@@ -46,7 +46,7 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 4. **D03 convert `return_ytd` percent text** (then reconcile with `benchmark_return_ytd + active_alpha_ytd`). Must come before D06 because D06's threshold only works on numbers.
 5. **D04 standardize state codes.**
 6. **D06, D07, D08 add flag columns** (flags are computed from the already-repaired values).
-7. Re-run the full audit on the clean tables and prove `raw = clean + quarantined` for all eight tables.
+7. Prove `raw = clean + quarantined` and zero orphan keys for all eight tables (`02_clean.py`); `03_validate.py` then re-runs every rule, reconciliation and referential check on the clean tables.
 
 ---
 
@@ -58,7 +58,7 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 | **Table / column** | `fact_transactions.client_id` |
 | **Evidence** | 200 rows (0.067%) have a `client_id` that is not in `dim_client` (F007). IDs range 2,702–3,192 while `dim_client` ends at 2,525; every orphan ID appears exactly once, none appears in `fact_fees` or `fact_portfolio_snapshot`, and all have a valid `advisor_id`. Types: Buy 58, Dividend 38, Sell 35, Deposit 25, Advisory Fee 24, Withdrawal 20; total amount $10,888,495; dates 2020-02-18 to 2024-12-19. |
 | **Dimension violated** | Referential Integrity |
-| **Decision** | **Quarantine** all 200 rows to `data/audit/quarantine_fact_transactions_orphan_client.csv` (all raw columns plus a `reason` column). Remove from the clean table. |
+| **Decision** | **Quarantine** all 200 rows to `data/audit/quarantine_fact_transactions_orphan_client.csv` (all raw columns, plus `raw_row_number` and a `quarantine_reason` column). Remove from the clean table. |
 | **Justification** | The transaction cannot be tied to any client, so it cannot appear in any client-level report, and it would break the transaction→client relationship in the Power BI star schema (assignment 5). We cannot repair the key: the IDs are not near any existing client ID and do not appear in any other table, so guessing a client would be inventing data. Keeping the rows in a quarantine file preserves them and lets us prove nothing was lost. |
 | **Risk** | If these are real clients who were simply missing from the client extract, removing them understates firm-wide transaction volume by $10.9M (200 of 298,772 rows). Mitigation: the quarantine file holds every column, so the rows can be restored if the missing clients are found. |
 | **Verification** | `assert` 0 orphan `client_id` in the clean table; `assert 298,772 == 298,572 + 200`; `assert` quarantine rows are exactly the raw rows whose `client_id` is not in `dim_client`. |
