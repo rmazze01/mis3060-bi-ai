@@ -27,7 +27,6 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 # ----------------------------------------------------------------------------
@@ -460,7 +459,7 @@ def prove_referential_integrity():
 # ----------------------------------------------------------------------------
 # README_clean.md
 # ----------------------------------------------------------------------------
-def build_readme(project_rel):
+def build_readme():
     S = STATS
     rt = "\n".join(f"| `{t}` | {r:,} | {c:,} | {q:,} |" for t, r, c, q in S["row_table"])
     rel = "\n".join(f"| `{c}.{cc}` | `{p}.{pc}` | many-to-one | {'nullable (blank for cash-flow rows)' if (c, cc) in NULLABLE_FK else 'required'} |"
@@ -578,7 +577,7 @@ def main():
     pd.DataFrame(LOG).rename(columns={"rows_affected": "rows_affected"}).to_csv(
         audit_dir / "cleaning_log.csv", index=False, encoding="utf-8", lineterminator="\n")
     changes.to_csv(audit_dir / "value_changes.csv", index=False, encoding="utf-8", lineterminator="\n")
-    (clean_dir / "README_clean.md").write_text(build_readme(project_root.name), encoding="utf-8", newline="\n")
+    (clean_dir / "README_clean.md").write_text(build_readme(), encoding="utf-8", newline="\n")
 
     # read back what was written: exactly what we hold in memory
     for t in TABLES:

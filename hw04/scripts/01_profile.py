@@ -299,7 +299,7 @@ def profile_table(table, df, expected=None):
     return pd.DataFrame(rows)
 
 
-def generic_findings(prof, df_map):
+def generic_findings(prof):
     """Turn the generic profile into findings (Group 1: column level)."""
     G = "1 Column level"
     for r in prof.itertuples():
@@ -492,7 +492,7 @@ def group2_single_table(T):
         "markets closed; may be synthetic-data artefact - flag, do not delete", "")
 
 
-def check_referential_integrity(fact_df, fact_key, dim_df, dim_key, allow_null=False):
+def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
     """Exact-string join check. Returns match rate, orphan rows, distinct orphan keys, null-key rate."""
     k = fact_df[fact_key]
     null = blank_mask(k)
@@ -621,7 +621,7 @@ def main():
     # Part 1: generic profile
     expected = {t: dict(p.split(":") for p in spec.split()) for t, spec in EXPECTED_TYPE.items()}
     prof = pd.concat([profile_table(t, df, expected.get(t)) for t, df in T.items()], ignore_index=True)
-    generic_findings(prof, T)
+    generic_findings(prof)
 
     # Part 2: four groups
     group1_column_rules(T)

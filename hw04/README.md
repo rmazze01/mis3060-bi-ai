@@ -70,7 +70,7 @@ These come from testing the scripts against the data and from a read-through of 
 | 5 | `03_validate.py` | The 836 negative-share Buy rows are counted by two different checks (`shares > 0` and `amount = shares × price`), so raw transaction rule pass counts one root cause twice (1,672 failed evaluations from 836 rows). | **Accepted.** The checks are legitimately different rules; documented here. |
 | 6 | `02_clean.py` | Expected counts from the audit (200, 300, 78, 312, 420, 386, 76, 197,044) are hard-coded, so the script stops if run on a different extract. | **Accepted.** Intentional fail-safe. |
 | 7 | all | Tested with pandas 3.0.5. The scripts use `lineterminator=` and so need pandas 1.5 or newer; pandas 2.x was not tested. | **Accepted**, noted. |
-| 8 | `01_profile.py`, `02_clean.py` | Unused code: unused arguments `df_map` and `allow_null` (01), unused `numpy` import and `project_rel` argument (02). | **Open.** Harmless; no effect on results. |
+| 8 | `01_profile.py`, `02_clean.py` | Unused code found by an AST check: unused arguments `df_map` and `allow_null` (01), unused `numpy` import and `project_rel` argument (02). | **Fixed.** All four removed. All three scripts were rerun and every report, clean table and audit file is byte-identical to the previous run. |
 
 ## 6. Version control
 One or more commits per part, each with a message that says what changed. Because `.gitignore` contains `*.csv`, the CSV deliverables were added with `git add -f`.
