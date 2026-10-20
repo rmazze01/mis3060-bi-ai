@@ -112,6 +112,8 @@ def find_file(data_dir, stem):
     if exact.exists():
         return exact
     hits = sorted(data_dir.glob(f"{stem}*.csv"), key=lambda p: (len(p.name), p.name))
+    if len(hits) > 1:
+        raise SystemExit(f"ERROR: {len(hits)} files match '{stem}*.csv' in {data_dir}: {[h.name for h in hits]}. Keep one and rerun.")
     return hits[0] if hits else None
 
 

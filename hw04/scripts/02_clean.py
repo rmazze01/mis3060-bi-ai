@@ -58,7 +58,7 @@ STATE_MAP = {"Pennsylvania": "PA", "Florida": "FL", "New York": "NY", "New Jerse
 US_STATES = set("AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split())
 # Numbers the decision log promises (from the audit). The script stops if the data disagrees.
 EXPECTED = {"orphan_tx": 200, "security_id_float": 197_044, "pct_returns": 300, "state_names": 78,
-            "return_outliers": 312, "snapshot_floor": 420, "fee_floor": 386, "risk_blank": 76}
+            "neg_buy": 835, "return_outliers": 312, "snapshot_floor": 420, "fee_floor": 386, "risk_blank": 76}
 RETURN_OUTLIER_THRESHOLD = 5.0   # decision D06: return_ytd above +500%
 AUM_FLOOR = 1000.0               # decision D07
 PCT_RECON_TOL = 0.000051         # 2-dp percent rounding (5e-5) + 6-dp rounding of the two reference columns
@@ -131,6 +131,8 @@ def find_file(data_dir, stem):
     if exact.exists():
         return exact
     hits = sorted(data_dir.glob(f"{stem}*.csv"), key=lambda p: (len(p.name), p.name))
+    if len(hits) > 1:
+        raise SystemExit(f"ERROR: {len(hits)} files match '{stem}*.csv' in {data_dir}: {[h.name for h in hits]}. Keep one and rerun.")
     return hits[0] if hits else None
 
 
@@ -216,7 +218,10 @@ def d05_negative_buy_shares():
     n = int(neg.sum())
     print(f"  before: {n:,} negative-share Buy rows; amount != shares x price on {int(mismatch_signed.sum()):,} rows "
           f"(only {int(mismatch_abs.sum())} rows fail if |shares| is used)")
-    assert n <= 836 and n > 0
+    expect("negative-share Buy rows", n, EXPECTED["neg_buy"])
+    for col_name, series in ("shares", tx["shares"]), ("price", tx["price"]), ("amount", tx["amount"]):
+        nonblank = series.str.strip() != ""
+        assert num(series)[nonblank].notna().all(), f"fact_transactions.{col_name} has a non-blank value that does not parse as a number"
     assert int(mismatch_abs.sum()) == 0, "amount does not reconcile to |shares| x price, so the sign is not the only problem"
     assert int(mismatch_signed.sum()) == n, "the amount mismatches are not exactly the negative rows"
     record_and_apply("fact_transactions", neg, "shares", tx.loc[neg, "shares"].str.lstrip("-"))
@@ -246,8 +251,9 @@ def d03_percent_text_returns():
     diff_as_points = (num(ret[pct].str.rstrip("%")) - expected_fraction).abs()
     print(f"  reconcile vs benchmark_return_ytd + active_alpha_ytd: max diff if /100 = {diff_as_fraction.max():.6f}; "
           f"if left as percent points = {diff_as_points.max():,.3f}")
-    assert diff_as_fraction.max() <= PCT_RECON_TOL, "converted values do not reconcile with benchmark + alpha"
-    assert diff_as_points.min() > 0.01, "left as percent points the values would also reconcile - scale not proven"
+    assert expected_fraction.notna().all(), "benchmark_return_ytd / active_alpha_ytd missing or unparseable on a converted row"
+    assert (diff_as_fraction <= PCT_RECON_TOL).all(), "converted values do not reconcile with benchmark + alpha"
+    assert (diff_as_points > 0.01).all(), "left as percent points the values would also reconcile - scale not proven"
     record_and_apply("fact_portfolio_snapshot", pct, "return_ytd", new)
     ret2 = CLEAN["fact_portfolio_snapshot"]["return_ytd"]
     print(f"  after : '%' remaining = {int(ret2.str.contains('%', regex=False).sum())}; "
@@ -295,8 +301,10 @@ def flags_d06_d07_d08():
     was_numeric = num(raw_sn["return_ytd"]).notna().reindex(sn.index)
     alpha_diff = (num(sn["active_alpha_ytd"]) - (r - num(sn["benchmark_return_ytd"]))).abs()
     alpha_check = alpha_diff[was_numeric].max()
-    assert alpha_check < 1e-5, "active_alpha_ytd != return_ytd - benchmark_return_ytd on originally numeric rows"
-    assert alpha_diff[~was_numeric].max() <= PCT_RECON_TOL
+    assert alpha_diff.notna().all(), "return, benchmark or alpha unparseable on a snapshot row"
+    assert (alpha_diff[was_numeric] < 1e-5).all(), "active_alpha_ytd != return_ytd - benchmark_return_ytd on originally numeric rows"
+    assert (alpha_diff[~was_numeric] <= PCT_RECON_TOL).all()
+    assert sn.loc[f6 & was_numeric, "return_ytd"].equals(raw_sn.loc[f6 & was_numeric, "return_ytd"]), "a flagged return value was changed"
     print(f"  D06 flag_return_ytd_outlier: {n6:,} rows ({sn.loc[f6, 'client_id'].nunique()} clients); "
           f"alpha = return - benchmark holds (max diff {alpha_check:.6f} on {int(was_numeric.sum()):,} numeric rows; "
           f"<= {PCT_RECON_TOL} on the 300 converted rows), so one flag covers both columns")
@@ -305,13 +313,13 @@ def flags_d06_d07_d08():
 
     # D07 - AUM floor (snapshot + fees)
     a = num(sn["aum"])
-    assert a.min() >= AUM_FLOOR, "AUM below the floor exists - the 'floor' explanation does not hold"
+    assert a.notna().all() and a.min() >= AUM_FLOOR, "AUM below the floor exists - the 'floor' explanation does not hold"
     f7 = (a == AUM_FLOOR)
     sn["flag_aum_at_floor"] = f7.astype(int).astype(str)
     n7 = int(f7.sum())
     expect("snapshot rows at AUM floor", n7, EXPECTED["snapshot_floor"])
     b = num(fe["aum_basis"])
-    assert b.min() >= AUM_FLOOR
+    assert b.notna().all() and b.min() >= AUM_FLOOR
     f7b = (b == AUM_FLOOR)
     fe["flag_aum_basis_at_floor"] = f7b.astype(int).astype(str)
     n7b = int(f7b.sum())
@@ -537,6 +545,7 @@ def main():
     project_root = Path(__file__).resolve().parent.parent
     data_dir = locate_data_dir(project_root, args.data_dir)
     clean_dir, audit_dir = project_root / "data" / "clean", project_root / "data" / "audit"
+    assert data_dir.resolve() not in {clean_dir.resolve(), audit_dir.resolve()}, "--data-dir must be the RAW folder, not data/clean or data/audit (outputs would overwrite the inputs)"
     clean_dir.mkdir(parents=True, exist_ok=True)
     audit_dir.mkdir(parents=True, exist_ok=True)
     print(f"Project root : {project_root}\nRaw data dir : {data_dir}\nClean output : {clean_dir}\nAudit output : {audit_dir}")
@@ -574,7 +583,7 @@ def main():
         CLEAN[t].to_csv(clean_dir / f"{t}.csv", index=False, encoding="utf-8", lineterminator="\n")
     for stem, (t, q) in QUARANTINE.items():
         q.to_csv(audit_dir / f"{stem}.csv", index=False, encoding="utf-8", lineterminator="\n")
-    pd.DataFrame(LOG).rename(columns={"rows_affected": "rows_affected"}).to_csv(
+    pd.DataFrame(LOG).to_csv(
         audit_dir / "cleaning_log.csv", index=False, encoding="utf-8", lineterminator="\n")
     changes.to_csv(audit_dir / "value_changes.csv", index=False, encoding="utf-8", lineterminator="\n")
     (clean_dir / "README_clean.md").write_text(build_readme(), encoding="utf-8", newline="\n")
