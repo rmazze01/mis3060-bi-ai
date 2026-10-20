@@ -461,9 +461,9 @@ def group2_single_table(T):
     add(G, "fact_portfolio_snapshot", "year/month", "year and month agree with snapshot_date", "ERROR",
         ((sd.dt.year.astype("Int64").astype(str) != p["year"]) | (sd.dt.month.astype("Int64").astype(str) != p["month"])).sum(), n, "", "")
     add(G, "fact_portfolio_snapshot", "aum", "aum at exactly 1,000 (possible floor/clamp)", "WARN",
-        (to_num(p["aum"]) == 1000).sum(), n, "returns on these rows are near -100%", "")
+        (to_num(p["aum"]) == 1000).sum(), n, "round-number minimum suggests a floor applied upstream; true AUM unknown", "")
     add(G, "fact_portfolio_snapshot", "return_ytd", "return_ytd > +500% (implausible)", "WARN", (ret > 5).sum(), int(ret.notna().sum()),
-        "usually on tiny-AUM accounts: ratio blow-up, not real performance", ex(p.loc[ret > 5, "return_ytd"]))
+        "implausible for one year; return and AUM history disagree on these rows - flag, do not correct", ex(p.loc[ret > 5, "return_ytd"]))
 
     # --- fact_transactions ---------------------------------------------------
     x = T["fact_transactions"]
