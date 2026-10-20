@@ -9,6 +9,7 @@
 - Raw files are never modified. Nothing is deleted silently: removed rows go to `data/audit/quarantine_*.csv`, and for every table **raw rows = clean rows + quarantined rows** (asserted).
 - After each transformation: print rows affected, show a before/after check, and `assert` the after-state.
 - Never invent data. Where a value cannot be corrected from other columns or tables, flag it.
+- Counts quoted in the entries are from the raw audit. The cleaning script quarantines the 200 orphan transactions first, so some of its counts are slightly lower where rows belonged to that set (for example 835 Buy rows corrected instead of 836, and 197,044 `security_id` values converted instead of 197,175).
 
 ## 2. Summary of decisions
 
@@ -82,7 +83,7 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 | **Decision** | **Convert**: strip the `%`, divide by 100, store as a decimal fraction. Log every change in `value_changes.csv` (old text → new number). |
 | **Justification** | A BI tool treats the whole column as text if even one `%` row remains, so every return calculation fails. The scale is not assumed: dividing by 100 makes `return_ytd` match `benchmark_return_ytd + active_alpha_ytd` on all 300 rows (max difference 0.00005, which is the rounding limit of a 2-decimal percent). Treating the value as already in percent points would be off by up to 1,158. |
 | **Risk** | If a few of the 300 had a different true value, the reconciliation tolerance (±0.00005) could hide an error of that size — immaterial for a return. |
-| **Verification** | `assert` all 300 converted values satisfy `abs(return_ytd − (benchmark_return_ytd + active_alpha_ytd)) ≤ 0.0000501`; `assert` no `%` remains; the column then parses 100% as float. |
+| **Verification** | `assert` all 300 converted values satisfy `abs(return_ytd − (benchmark_return_ytd + active_alpha_ytd)) ≤ 0.000051` (the observed maximum is about 0.00005, the rounding limit of a 2-decimal percent, plus 6-decimal rounding in the two reference columns); `assert` no `%` remains; the column then parses 100% as float. |
 
 ### D04 — State: codes mixed with full names
 | Field | Entry |
@@ -113,7 +114,7 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 | **Evidence** | After D03 conversion, **312** rows have `return_ytd` > 5.0 (500%), belonging to 40 clients, all Retail (the audit's 311 excluded the 300 text rows). Sensitivity: >200% 472 rows, >300% 373, >500% 312, >1000% 261 — no natural gap. `active_alpha_ytd` > 6 on 285 rows (F011). These accounts are **not** tiny: median AUM $42.5k (max $200k); only 6% are under $10k and none is at the 1,000 floor. Their AUM is a median 47% of the client's initial AUM; client 81 fell from about $75k to $27k in Oct 2020 yet shows a later `return_ytd` of 806%. The return and the AUM history contradict each other. |
 | **Dimension violated** | Accuracy/Plausibility, Consistency |
 | **Decision** | **Flag** with `flag_return_ytd_outlier` = 1 where converted `return_ytd` > 5.0. Do not change the value. `active_alpha_ytd` is not changed or flagged separately: it equals `return_ytd − benchmark_return_ytd` on every row (0 mismatches), so the same flag covers it. |
-| **Justification** | A 500%+ gain on a balanced retail portfolio is not plausible, but we cannot work out the correct return from the other columns, because they disagree with it. Correcting it would be guessing. Flagging lets an analyst exclude these rows from averages without us discarding data. The 500% threshold is a judgment call (see sensitivity above). |
+| **Justification** | A gain of more than 500% in a year on a Retail account of this size is not plausible, but we cannot work out the correct return from the other columns, because they disagree with it. Correcting it would be guessing. Flagging lets an analyst exclude these rows from averages without us discarding data. The 500% threshold is a judgment call (see sensitivity above). |
 | **Risk** | Too low a threshold hides real extreme performance; too high lets bad values distort averages. Averages of `return_ytd` and alpha across the book are unreliable until these 312 rows are excluded or explained. Returns below −90% (498 rows, 249 of them at the AUM floor) are *not* flagged: they are consistent with AUM having collapsed. |
 | **Verification** | `assert` flagged count equals the count of converted `return_ytd` > 5.0; `assert` no flagged row has changed value versus the raw file (apart from D03). |
 
@@ -125,7 +126,7 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 | **Dimension violated** | Accuracy/Plausibility |
 | **Decision** | **Flag**: `flag_aum_at_floor` (snapshot) and `flag_aum_basis_at_floor` (fees) = 1 where the value is exactly 1,000. Do not change the values. |
 | **Justification** | The true AUM of these accounts is unknown (it may be lower than 1,000), so the real number cannot be restored. Leaving the value and flagging it keeps the tables consistent with each other and lets AUM totals, fee-rate analysis and returns exclude the floor rows where it matters. |
-| **Risk** | Totals include a small amount of floor-inflated AUM (420 × $1,000 = $0.42M against a book of about $566B across all snapshot rows — immaterial to totals but material to per-account returns). Fee `bps` ratios on floor rows are not meaningful. |
+| **Risk** | Totals include a small amount of possibly floor-inflated AUM (420 rows × $1,000 = $0.42M in total, immaterial to firm totals but material to per-account returns). Fee amounts and returns on floor rows are not meaningful. |
 | **Verification** | `assert` flag count = 420 / 386 (before any quarantine, since neither table loses rows); `assert` flagged rows have `aum = 1000`; `assert` the values are unchanged from raw. |
 
 ### D08 — Blank risk profile
@@ -191,12 +192,12 @@ Added flag columns: `dim_client.flag_risk_profile_missing`, `fact_portfolio_snap
 | **Dimension violated** | Accuracy/Plausibility (only against my own 100 bps assumption). |
 | **Decision** | **Leave as is.** |
 | **Justification** | The 100 bps ceiling was my assumption, not a rule from the source; the value sits in a continuous distribution and the amount reconciles. |
-| **Risk** | If the firm's maximum fee really is 100 bps, one fee is overcharged by about $0.30. |
+| **Risk** | If the firm's maximum fee really is 100 bps, one fee is overcharged by about $0.34. |
 
 ### D14 — Dimension members with no facts
 | Field | Entry |
 |---|---|
-| **Table / column** | `dim_client` (IDs 2501–2525), `dim_benchmark` (IDs 2, 4, 5, 6 unused in snapshots; 6, 8 unused by securities) |
+| **Table / column** | `dim_client` (IDs 2501–2525), `dim_benchmark` (IDs 2, 4, 5, 6, 7 unused in snapshots; 6, 8 unused by securities) |
 | **Evidence** | 25 clients (0.99%) appear in no fee, snapshot or transaction row (F030–F032, F034): 24 active, signed 2015–2022, $49.1M initial AUM, all with valid advisors. 5 of 8 benchmarks are not used by any snapshot (F028–F029). |
 | **Dimension violated** | None (reverse integrity, not a broken join). |
 | **Decision** | **Leave as is.** |
