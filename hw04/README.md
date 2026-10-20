@@ -3,6 +3,9 @@
 
 Python programs that audit eight warehouse tables, repair what can be repaired without inventing data, flag what cannot, and prove each fix. The raw files are never modified. Full reasoning is in `decision_log.md`; the committee-facing summary is `reports/cleaning_report.md`.
 
+
+**What is generic in Part A.** `profile_table()` profiles any DataFrame (31 statistics per column, no table names), and the column-level and duplicate checks are driven by a config block at the top of `01_profile.py`, so a new table needs config entries, not new code. The referential-integrity function takes any two tables. The group 2 to 4 business rules (for example fee debits versus the fee table) name the Wildcat tables on purpose and run only when all eight are present.
+
 ## 1. Structure
 
 ```
@@ -74,7 +77,7 @@ These come from testing the scripts against the data, a read-through with Claude
 | 9 | `decision_log.md` | **Claude Code, low:** the log said the quarantine file has a `reason` column (it is `quarantine_reason` plus `raw_row_number`) and said the full audit is re-run in step 7 (that happens in `03_validate.py`). | **Fixed.** Wording corrected. |
 | 10 | `01_profile.py`, `02_clean.py` | Unused arguments `df_map`, `allow_null`, `project_rel` and an unused `numpy` import. | **Fixed.** Removed. |
 | 11 | `03_validate.py` | **Claude Code, low:** the RI function trims keys before matching and does not report duplicate dimension keys; `pcts.fillna(0)` hides NaN. | **Accepted.** The data has no whitespace or duplicate keys; revisit when the function is reused in Assignment 5. |
-| 12 | `01_profile.py` | **Claude Code, low–medium:** a table missing from the config raises `KeyError`; some dates and one `dim_client` rule are hard-coded in group 2–4 checks; `str.match` with `$` anchors. | **Accepted.** Profiling itself is generic; the business-rule checks name their tables on purpose. No effect on results. |
+| 12 | `01_profile.py` | **Claude Code, low–medium:** a table missing from the config raised `KeyError`, so the profiler was not fully generic. | **Fixed.** Key, type and rule lookups now skip when a table is not configured. Tested on a made-up table the script had never seen: the full 31-statistic profile plus the column-level and duplicate checks run. The reports are byte-identical for the real data. |
 | 13 | `02_clean.py` | **Claude Code, low:** PROOF 2 compares counts of changed cells, not the exact cells; the log notes for D12, D15 and D18 are fixed text. | **Accepted.** Every write goes through one logging function; the evidence for those entries is in `decision_log.md`. |
 | 14 | `02_clean.py` | Expected audit counts (200, 300, 78, 312, 420, 386, 76, 197,044, 835) are hard-coded, so the script stops on a different extract. | **Accepted.** Intentional fail-safe. |
 | 15 | all | Tested with pandas 3.0.5; `lineterminator=` needs pandas 1.5+, and the scripts need Python 3.10+. pandas 2.x untested. | **Accepted**, noted. |

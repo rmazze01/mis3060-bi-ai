@@ -344,10 +344,10 @@ def group1_column_rules(T):
     G = "1 Column level"
     for t, df in T.items():
         n = len(df)
-        pk = PK[t]
-        # key uniqueness
-        dup = df[pk].duplicated(keep=False) & ~blank_mask(df[pk])
-        add(G, t, pk, "primary key unique", "ERROR", dup.sum(), n, "", ex(df.loc[dup, pk]))
+        pk = PK.get(t)  # a table with no configured key still gets every other check
+        if pk in df.columns:
+            dup = df[pk].duplicated(keep=False) & ~blank_mask(df[pk])
+            add(G, t, pk, "primary key unique", "ERROR", dup.sum(), n, "", ex(df.loc[dup, pk]))
         for nk in NATURAL_KEYS.get(t, []):
             d = df[nk].duplicated(keep=False) & ~blank_mask(df[nk])
             add(G, t, nk, "natural key unique", "WARN", d.sum(), n, "", ex(df.loc[d, nk]))
@@ -363,7 +363,7 @@ def group1_column_rules(T):
             add(G, t, col, f"within range [{lo}, {hi}]", sev, bad.sum(), int(x.notna().sum()),
                 f"observed min={x.min():g} max={x.max():g}", ex(df.loc[bad, col]))
         # date columns: valid and inside the dim_date window
-        for col in [c for c in df.columns if EXPECTED_TYPE[t].find(f"{c}:date") >= 0]:
+        for col in [c for c in df.columns if EXPECTED_TYPE.get(t, "").find(f"{c}:date") >= 0]:
             d = pd.to_datetime(df[col], format="%Y-%m-%d", errors="coerce")
             bad = d.notna() & ((d < DATE_WINDOW[0]) | (d > DATE_WINDOW[1]))
             if t == "dim_client":  # signup dates may pre-date the 2020 calendar window
@@ -381,16 +381,20 @@ def group2_single_table(T):
     G = "2 Single-table rules"
     for t, df in T.items():
         n = len(df)
-        pk = PK[t]
-        body = df.drop(columns=[pk])
+        pk = PK.get(t)
+        body = df.drop(columns=[pk]) if pk in df.columns else df
         d = body.duplicated(keep=False)
-        add(G, t, "(all but PK)", "exact duplicate rows ignoring the primary key", "ERROR", d.sum(), n, "", "")
+        add(G, t, "(all but PK)" if pk in df.columns else "(all columns)", "exact duplicate rows ignoring the primary key", "ERROR", d.sum(), n, "", "")
         for cols, note in NEAR_DUPES.get(t, []):
             cols = [c for c in cols if c in df.columns]
             k = df[cols].apply(lambda s: s.str.strip().str.lower())
             m = k.duplicated(keep=False) & ~(k == "").any(axis=1)
             add(G, t, "+".join(cols), f"near-duplicate: {note}", "WARN", m.sum(), n,
                 f"{k[m].drop_duplicates().shape[0]} duplicate groups", ex(df.loc[m, pk]))
+
+    # Everything below is business-specific to the eight Wildcat tables; it runs only when they are all present.
+    if not set(TABLE_FILES) <= set(T):
+        return
 
     # --- dim_date: derived columns agree with the date -----------------------
     dd = T["dim_date"]
@@ -510,6 +514,8 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
 def group3_referential(T):
     G = "3 Referential integrity"
     for child, ccol, parent, pcol in FOREIGN_KEYS:
+        if child not in T or parent not in T:
+            continue  # relationship not applicable to the tables supplied
         fk, dm = T[child], T[parent]
         r = check_referential_integrity(fk, ccol, dm, pcol)
         # same test after normalising 45.0 -> 45 so we can separate "format" problems from "missing parent"
@@ -534,6 +540,8 @@ def group3_referential(T):
 
 def group4_cross_table(T):
     G = "4 Cross-table business rules"
+    if not set(TABLE_FILES) <= set(T):
+        return  # these rules are written for the eight Wildcat tables
     cl, fee, snap, tx = T["dim_client"], T["fact_fees"], T["fact_portfolio_snapshot"], T["fact_transactions"]
     cl_idx = cl.set_index("client_id")
 
