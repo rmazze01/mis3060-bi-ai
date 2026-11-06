@@ -11,7 +11,7 @@ hw06/
   WildcatCapitalClean/               the cleaned CSVs (not committed: *.csv is in .gitignore)
   powerbi/
     hw06.pbix                        posted model + _Measures table + Measures report page
-    measures.md                      Part A documentation (Part C answers are added here)
+    measures.md                      Part A documentation and Part C answers
     export_values_query.dax          DAX query that exports the Power BI values for Part B
   scripts/
     01_reconcile_measures.py         Part B reconciliation
@@ -57,6 +57,32 @@ The script was reviewed before the commit. This review was done in the same Clau
 | A value such as `19.58%` would be read as 19.58 instead of 0.1958 | Fixed: percent signs are no longer stripped, so such a value is reported as a mismatch |
 
 No correctness problems were found. After the fixes the script was re-tested with tab- and comma-separated input, with deliberately wrong values (flagged correctly), and with a duplicate data file, and it still reports 83 of 83 on the real export.
+
+## Part C: design questions
+Answers (a) to (d) are in `powerbi/measures.md`, each backed by pandas evidence from the same data.
+
+## Part D: Claude-assisted measure (Top 10 Client Share)
+I chose measure 11, Top 10 Client Share, and had Claude Desktop write a second version, `Top 10 Client Share (Claude)`, using the Draft, Test, Debug, Review workflow.
+
+| File | What it holds |
+|---|---|
+| `claude/model_metadata.md` | `INFO.VIEW.TABLES()`, `COLUMNS()` and `RELATIONSHIPS()` exports from the model, pasted into the prompt |
+| `claude/dax_session.md` | The full Claude conversation: prompt, response, the error and the fix, and the final measure |
+| `claude/verification.md` | How the measure was tested and what the tests returned |
+
+**Draft.** The prompt included the model metadata plus what the metadata can't show (the client-by-month grain, `aum` is a balance, the marked date table, the business definition). An earlier attempt left the metadata placeholder unfilled, so I redid the session with the real metadata and the log shows the redo.
+
+**Test and debug.** The first version failed because the variable was named `LastDate`, which is a built-in DAX function. Renaming it to `EndDate` fixed it.
+
+**Review.** The measure matches an independent manual calculation and my own Part A measure:
+
+| Slice | Claude measure |
+|---|---|
+| 2024 HNW | 0.031397 |
+| 2024 Retail | 0.018348 |
+| 2024 UHNW | 0.081264 |
+
+The UHNW value equals a manual Dec 2024 check that uses no measure logic (0.08126426...). Ending AUM for 2024 also matches pandas exactly (12,729,572,078.86). See `claude/verification.md`.
 
 ## Notes on the Measures report page
 
