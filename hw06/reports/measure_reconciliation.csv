@@ -1,0 +1,84 @@
+measure,slice,powerbi_value,pandas_value,abs_diff,match
+AUM (naive SUM),Grand total,566681084542.48,566681084542.48,0.0,True
+Ending AUM,Grand total,12729572078.86,12729572078.86,0.0,True
+Ending Clients,Grand total,2325.0,2325.0,0.0,True
+Avg AUM per Client,Grand total,5475084.765101,5475084.76510108,8e-08,True
+Ending AUM LY,Grand total,10644971737.0,10644971737.0,0.0,True
+AUM YoY %,Grand total,0.19583,0.19582958,4.2e-07,True
+Ending AUM PM,Grand total,12211162447.94,12211162447.939999,1.91e-06,True
+AUM MoM %,Grand total,0.042454,0.04245375,2.5e-07,True
+Avg Monthly AUM,Grand total,9444684742.37467,9444684742.374666,3.81e-06,True
+Fee Yield (bps),Grand total,43.341962,43.3419619,1e-07,True
+Organic Growth Rate,Grand total,0.03076,0.03075997,3e-08,True
+AUM-Weighted Alpha,Grand total,0.01448,0.01447995,5e-08,True
+Alpha Signal,Grand total,In line,In line,,True
+Top 10 Client Share,Grand total,0.061589,0.06158927,2.7e-07,True
+Ending AUM,Year 2020,8130190789.37,8130190789.369999,9.5e-07,True
+Ending AUM LY,Year 2020,,,,True
+AUM YoY %,Year 2020,,,,True
+Avg Monthly AUM,Year 2020,7379299895.30166,7379299895.301666,6.68e-06,True
+Fee Yield (bps),Year 2020,43.326738,43.32673842,4.2e-07,True
+Organic Growth Rate,Year 2020,,,,True
+AUM-Weighted Alpha,Year 2020,-0.006802,-0.0068017,3e-07,True
+Alpha Signal,Year 2020,In line,In line,,True
+Ending AUM,Year 2021,10010301949.11,10010301949.11,0.0,True
+Ending AUM LY,Year 2021,8130190789.37,8130190789.369999,9.5e-07,True
+AUM YoY %,Year 2021,0.231251,0.23125056,4.4e-07,True
+Avg Monthly AUM,Year 2021,9135353821.88917,9135353821.889166,3.81e-06,True
+Fee Yield (bps),Year 2021,42.959356,42.95935589,1.1e-07,True
+Organic Growth Rate,Year 2021,0.0062,0.00620021,2.1e-07,True
+AUM-Weighted Alpha,Year 2021,-0.001574,-0.00157437,3.7e-07,True
+Alpha Signal,Year 2021,In line,In line,,True
+Ending AUM,Year 2022,9308159286.53,9308159286.53,0.0,True
+Ending AUM LY,Year 2022,10010301949.11,10010301949.11,0.0,True
+AUM YoY %,Year 2022,-0.070142,-0.07014201,1e-08,True
+Avg Monthly AUM,Year 2022,9591147070.37333,9591147070.373335,5.72e-06,True
+Fee Yield (bps),Year 2022,44.174888,44.17488797,3e-08,True
+Organic Growth Rate,Year 2022,0.00755,0.00754965,3.5e-07,True
+AUM-Weighted Alpha,Year 2022,0.028494,0.02849407,7e-08,True
+Alpha Signal,Year 2022,Outperforming,Outperforming,,True
+Ending AUM,Year 2023,10644971737.0,10644971737.0,0.0,True
+Ending AUM LY,Year 2023,9308159286.53,9308159286.53,0.0,True
+AUM YoY %,Year 2023,0.143617,0.14361727,2.7e-07,True
+Avg Monthly AUM,Year 2023,9829302608.99833,9829302608.998335,5.72e-06,True
+Fee Yield (bps),Year 2023,43.111707,43.11170682,1.8e-07,True
+Organic Growth Rate,Year 2023,0.008327,0.00832668,3.2e-07,True
+AUM-Weighted Alpha,Year 2023,0.017689,0.01768905,5e-08,True
+Alpha Signal,Year 2023,In line,In line,,True
+Ending AUM,Year 2024,12729572078.86,12729572078.86,0.0,True
+Ending AUM LY,Year 2024,10644971737.0,10644971737.0,0.0,True
+AUM YoY %,Year 2024,0.19583,0.19582958,4.2e-07,True
+Avg Monthly AUM,Year 2024,11288320315.3108,11288320315.310833,3.242e-05,True
+Fee Yield (bps),Year 2024,43.154344,43.15434411,1.1e-07,True
+Organic Growth Rate,Year 2024,0.007282,0.00728166,3.4e-07,True
+AUM-Weighted Alpha,Year 2024,0.01448,0.01447995,5e-08,True
+Alpha Signal,Year 2024,In line,In line,,True
+Ending AUM,Tier HNW | Year 2024,2548521154.33,2548521154.33,0.0,True
+Avg AUM per Client,Tier HNW | Year 2024,3709637.779229,3709637.77922853,4.7e-07,True
+Ending AUM LY,Tier HNW | Year 2024,2130154150.42,2130154150.42,0.0,True
+AUM YoY %,Tier HNW | Year 2024,0.196402,0.19640222,2.2e-07,True
+Fee Yield (bps),Tier HNW | Year 2024,61.38572,61.38571958,4.2e-07,True
+Organic Growth Rate,Tier HNW | Year 2024,0.011843,0.011843,0.0,True
+AUM-Weighted Alpha,Tier HNW | Year 2024,0.013988,0.01398804,4e-08,True
+Alpha Signal,Tier HNW | Year 2024,In line,In line,,True
+Top 10 Client Share,Tier HNW | Year 2024,0.031397,0.03139675,2.5e-07,True
+Ending AUM,Tier Retail | Year 2024,533452497.89,533452497.89,0.0,True
+Avg AUM per Client,Tier Retail | Year 2024,382677.545115,382677.54511478,2.2e-07,True
+Ending AUM LY,Tier Retail | Year 2024,447795648.67,447795648.67,0.0,True
+AUM YoY %,Tier Retail | Year 2024,0.191286,0.19128558,4.2e-07,True
+Fee Yield (bps),Tier Retail | Year 2024,82.810536,82.81053647,4.7e-07,True
+Organic Growth Rate,Tier Retail | Year 2024,0.09867,0.09867011,1.1e-07,True
+AUM-Weighted Alpha,Tier Retail | Year 2024,0.024041,0.02404101,1e-08,True
+Alpha Signal,Tier Retail | Year 2024,Outperforming,Outperforming,,True
+Top 10 Client Share,Tier Retail | Year 2024,0.018348,0.01834822,2.2e-07,True
+Ending AUM,Tier UHNW | Year 2024,9647598426.64,9647598426.64,0.0,True
+Avg AUM per Client,Tier UHNW | Year 2024,39539337.814098,39539337.81409836,3.6e-07,True
+Ending AUM LY,Tier UHNW | Year 2024,8067021937.91,8067021937.91,0.0,True
+AUM YoY %,Tier UHNW | Year 2024,0.195931,0.1959306,4e-07,True
+Fee Yield (bps),Tier UHNW | Year 2024,36.142213,36.14221285,1.5e-07,True
+Organic Growth Rate,Tier UHNW | Year 2024,0.001004,0.00100429,2.9e-07,True
+AUM-Weighted Alpha,Tier UHNW | Year 2024,0.014097,0.01409663,3.7e-07,True
+Alpha Signal,Tier UHNW | Year 2024,In line,In line,,True
+Top 10 Client Share,Tier UHNW | Year 2024,0.081264,0.08126427,2.7e-07,True
+Ending AUM PM,Dec 2024,12211162447.94,12211162447.939999,1.91e-06,True
+AUM MoM %,Dec 2024,0.042454,0.04245375,2.5e-07,True
