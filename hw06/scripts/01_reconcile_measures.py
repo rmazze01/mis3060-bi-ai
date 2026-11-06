@@ -68,6 +68,9 @@ def load_csv(prefix):
     matches = sorted(DATA_DIR.glob(prefix + "*.csv"))
     if not matches:
         sys.exit("Could not find %s*.csv in %s" % (prefix, DATA_DIR))
+    if len(matches) > 1:
+        print("WARNING: %d files match %s*.csv (%s). Using %s."
+              % (len(matches), prefix, ", ".join(m.name for m in matches), matches[0].name))
     return pd.read_csv(matches[0])
 
 
@@ -221,8 +224,13 @@ def load_powerbi_values():
               % PBI_FILE)
         return pd.DataFrame(columns=["measure", "slice", "powerbi_value"])
 
-    # sep=None lets pandas accept comma- or tab-separated text (DAX query view copies as tabs)
-    raw = pd.read_csv(PBI_FILE, sep=None, engine="python", dtype=str)
+    # DAX query view copies results as tab-separated text; a saved CSV uses commas.
+    # Decide from the header line instead of letting pandas guess.
+    with open(PBI_FILE, "r", encoding="utf-8-sig") as fh:
+        header_line = fh.readline()
+    delimiter = "\t" if "\t" in header_line else ","
+    raw = pd.read_csv(PBI_FILE, sep=delimiter, dtype=str, encoding="utf-8-sig",
+                      keep_default_na=False)
     raw.columns = [c.strip().strip("[]\"'").lower() for c in raw.columns]
     for needed in ("measure", "slice", "value"):
         if needed not in raw.columns:
@@ -247,7 +255,9 @@ def to_number(v):
     if v is None or pd.isna(v) or str(v).strip() == "":
         return np.nan
     try:
-        return float(str(v).replace(",", "").replace("$", "").replace("%", ""))
+        # A value like "19.58%" is NOT converted: it stays text and is reported as a mismatch,
+        # instead of being silently read as 19.58 instead of 0.1958.
+        return float(str(v).replace(",", "").replace("$", ""))
     except ValueError:
         return str(v)
 
