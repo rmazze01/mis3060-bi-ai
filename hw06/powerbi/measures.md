@@ -105,6 +105,66 @@ Top 10 Client Share = DIVIDE ( SUMX ( TOPN ( 10, VALUES ( dim_client[client_id] 
 
 The **Measures** page of `powerbi/hw06.pbix` has the four summary measures as single-measure tables (see `README.md`), a table by `dim_date[year]`, and a table by `dim_client[client_tier]` with a visual-level filter for 2024.
 
-## Part C
+## Part C: design questions
 
-Answers to the design questions go here.
+All numbers below were computed in pandas from the Wildcat Capital Clean CSVs. Answer (a) was also checked in Power BI DAX query view.
+
+### (a) Ending AUM versus the SUMX version, no filters
+
+`Ending AUM` is **$12,729,572,078.86**. `SUMX ( VALUES ( dim_client[client_id] ), [Ending AUM] )` is **$13,149,297,713.80**, which is **$419,725,634.94** more. Power BI and pandas give the same two numbers.
+
+`Ending AUM` reads one date, the last snapshot in the filter (2024-12-01), and adds every balance on it. Inside `SUMX`, each client is its own filter context, so `LASTNONBLANK` finds that client's own last snapshot. The 175 clients who left before December 2024 (13 last appear in 2022, 162 in 2023) each add their final balance, and those balances total exactly $419,725,634.94. The 2,325 clients still active contribute the same either way.
+
+`Ending AUM` answers "How much do we manage today?" because a departed client's old balance is no longer managed assets. The SUMX version counts money that left the firm.
+
+*Limitation:* "absent from the December 2024 snapshot" is treated as "left the firm." This agrees with `dim_client[is_active]` (175 inactive, 2,325 active), but the data gives no departure date or reason.
+
+### (b) Fee Yield (bps) versus the ICE 9 Effective Fee Rate, 2024
+
+The ICE 9 measure is `DIVIDE ( [Total Fees] * 12 * 10000, SUM ( fact_fees[aum_basis] ) )`. For 2024 it gives **45.53 bps**, and `Fee Yield (bps)` gives **43.15 bps**. The numerator is identical ($48,714,005.93 in fees), so the **2.38 bps gap comes entirely from the denominator**:
+
+| | Denominator | Result |
+|---|---|---|
+| Effective Fee Rate | $128,385,303,527.10 (`fact_fees[aum_basis]`) | 45.53 |
+| Fee Yield | $135,459,843,783.73 (`fact_portfolio_snapshot[aum]`) | 43.15 |
+
+The $7,074,540,256.63 difference is the AUM of **1,684 of the 27,900 client-months (6.0%) that have a 2024 snapshot but no fee row**. Where a fee row exists, `aum_basis` equals the snapshot `aum` exactly (maximum difference 0.00, and no client-month has duplicate fee rows), and dividing by snapshot AUM on only the matched rows gives 45.53 again. The missing rows are spread across all months (91 to 172 a month), all tiers (Retail 1,054, HNW 472, UHNW 158) and 1,082 different clients.
+
+This reveals that `fact_fees` does not cover every client-month on the snapshot. The ICE 9 rate silently drops uncovered AUM from its denominator, and Fee Yield keeps it.
+
+*Limitation:* the data cannot say whether those months were fee-free or unrecorded. If unrecorded, the true yield is higher than 43.15 and the ICE 9 figure may be closer. If truly fee-free, 43.15 is the better measure of earnings per dollar managed. Billing would have to confirm.
+
+### (c) Why read alpha only at the last snapshot, and why exclude suspect returns
+
+`active_alpha_ytd` is year-to-date, so it is cumulative within a year and resets each January. The January value covers one month and the December value covers twelve, so averaging or pooling several months mixes incomparable periods and counts the same performance repeatedly. For 2024 the weighted alpha rises from about -0.01% in January to 1.45% in December, and pooling all 12 months gives only 0.32%. The last snapshot is the one point where each client's value covers the whole year.
+
+At the December 2024 snapshot, 148 of 2,325 rows (6.4%) are flagged `is_return_suspect = 1`. They hold just $15.5M, 0.12% of AUM, but their alpha runs up to **+7,134%**, against a range of about -50% to +50% for the other rows.
+
+| Same rows (2,177 non-suspect), December 2024 | Alpha |
+|---|---:|
+| AUM-weighted (the measure) | 1.45% |
+| Simple mean of `active_alpha_ytd` | 0.88% |
+| Weighted, suspects included | 1.67% |
+| Simple mean, suspects included | 15.56% |
+
+The simple mean on the same rows is 0.88%. The weighted value with suspects included is 1.67%. Weighting is robust, since the suspects are tiny in dollars and only move it 0.22 points, but the simple mean explodes to 15.56%. The weighted value also differs from the simple mean on clean rows (1.45% versus 0.88%) because larger clients had higher alpha.
+
+*Limitations:* the data does not say why a return was flagged, so excluding them assumes they are errors, and a real extreme return would be dropped too. Weighting uses the year-end balance, not the average balance during the year. The signal is "In line" either way (1.45% or 1.67%), because the "Outperforming" band is 2%.
+
+### (d) Organic growth by tier, 2024
+
+| Tier | Organic Growth | AUM YoY % | Net flows | AUM increase | Flows' share of increase |
+|---|---:|---:|---:|---:|---:|
+| HNW | 1.18% | 19.64% | $25.2M | $418.4M | 6.0% |
+| Retail | 9.87% | 19.13% | $44.2M | $85.7M | 51.6% |
+| UHNW | 0.10% | 19.59% | $8.1M | $1,580.6M | 0.5% |
+
+AUM grew about 19% in every tier, but organic growth is only 1.18% in HNW and 0.10% in UHNW. **Almost all of Wildcat's growth in 2024 came from the portfolios' own value changes, not from new money.** Retail is the one exception: its flows are about half of its dollar growth. Overall, net flows of $77.5M explain only 3.7% of the $2.08B increase, and UHNW provides $1.58B of it. No client joined or left during 2024 (the last new clients arrived in 2022 and the last departures were in 2023, and the year-end counts are identical at 687, 1,394 and 244), so existing clients drove all of it.
+
+What it does **not** tell you:
+- **The non-flow part is not split.** The remainder (change in AUM minus net flows) lumps market returns, reinvested income, fees and anything else. OGR does not say how much was market performance.
+- **Net flows hide gross activity.** Deposits minus withdrawals can hide large offsetting movements, and say nothing about which clients made them.
+- **Rates depend on base size.** Retail's 9.87% is on a small base ($448M), so a modest dollar amount gives a large rate. UHNW's tiny rate sits on a large base.
+- **It is one year.** Other years are needed before calling it a pattern.
+
+*Data check:* none of the 2024 deposits or withdrawals are flagged `is_post_departure_txn`, so that flag does not affect these results.
