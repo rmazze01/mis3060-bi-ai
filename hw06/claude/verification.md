@@ -9,22 +9,27 @@ It iterates over `dim_client[client_id]` rather than the `client_id` column in `
 Not at first. The first version used the variable name `LastDate`, which is the name of the built-in DAX function `LASTDATE`, and the formula showed a squiggle error. Claude renamed the variable to `EndDate` but left one reference inside `CALCULATE` still reading `= LastDate`, so it still errored. I sent Claude a screenshot, it found the missed line (follow-up #2 in `dax_session.md`), and after that the measure ran. Only the variable name changed; the logic is the same as Claude's first draft.
 
 ## What the tests returned
-- **Measure by year (2024):** Ending AUM 12,729,572,078.86, which matches pandas exactly. Top 10 Share displays as 0.06 (0.0616 at full precision).
-- **Measure by tier (2024):** HNW 0.031397, Retail 0.018348, UHNW 0.081264.
+- **Grand total:** 0.061589.
+- **By year (all years):** 2020 0.070411, 2021 0.063754, 2022 0.055309, 2023 0.060379, 2024 0.061589.
+- **By tier, 2024:** HNW 0.031397, Retail 0.018348, UHNW 0.081264.
+- **2024, all tiers:** Ending AUM 12,729,572,078.86, which matches pandas exactly.
 - **UHNW Dec 2024 manual check:** a separate query with no measure logic. Top 10 AUM 784,005,019.49; share 0.08126426752227993.
 
-## Reconciliation evidence
-The Part A measure `Top 10 Client Share` was reconciled in `reports/measure_reconciliation.csv` (83 of 83 rows match). The 2024 tier rows there (HNW 3.14%, Retail 1.83%, UHNW 8.13%) equal the values returned by the Claude measure above, to four decimals.
+## Which reconciliation rows prove it
+The Part A measure `Top 10 Client Share` is reconciled in `reports/measure_reconciliation.csv` (83 of 83 rows match). The rows that cover the same numbers are `Top 10 Client Share | Grand total` (6.16%) and `Top 10 Client Share | Tier HNW | Year 2024`, `Tier Retail | Year 2024` and `Tier UHNW | Year 2024` (3.14%, 1.83%, 8.13%). The Claude measure returns the same values as those rows. The by-year values above also equal the pandas Top 10 share for each year.
 
 ## Edge cases
-1. **Tier filter:** UHNW holds all 10 of the largest clients, so the UHNW share (8.13%) is higher than the all-tiers share (6.16%). The measure responds to the tier filter and the manual check agrees.
-2. **Single date (Dec 2024):** the top 10 is chosen from balances at one snapshot, not summed across months.
+1. **Grand total (no filter):** 0.061589, equal to the 2024 value, because the top 10 is read at the last snapshot, not summed across months.
+2. **Year 2022:** 0.055309, the lowest year, matching pandas.
+3. **2024 tier table:** all three tiers match. UHNW holds all 10 of the largest clients, so its share (8.13%) is higher than the all-tiers share (6.16%).
+4. **Single date (Dec 2024, UHNW):** the manual check divides the top 10 by the UHNW total at that date (9,647,598,426.64) and gets the same 8.13%.
 
 ## Limitation
 The manual check's denominator (9,647,598,426.64) was typed into the query by the Claude chat. I confirmed it independently with a separate sum query in DAX query view (it returned 9647598426.64) and in pandas (244 UHNW clients at Dec 2024).
 
-## One Claude claim checked
-Claude said clients are ranked by their balance at the last snapshot date in the filter. I checked this against a pandas calculation across all 20 year-and-tier combinations. The ranking and the share were the same in every case. The claim holds on this data.
+## Claims checked
+1. **Confirmed in Power BI:** Claude said `LastDate` was flagged because it matches the built-in `LASTDATE` function, and that renaming the variable would clear the error. The squiggle only cleared after the missed `= LastDate` reference was also renamed, so the claim was right, but Claude's first fix was incomplete.
+2. **Confirmed in pandas (run in a Claude session):** Claude said clients are ranked by their balance at the last snapshot date in the filter. A pandas check across all 20 year-and-tier combinations, using that date for both the top 10 and the total, gave the same share as the measure in every case.
 
 ## Result
 The Claude measure matches the independent calculation and my Part A measure.
