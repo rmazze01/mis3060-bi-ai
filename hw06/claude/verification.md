@@ -33,3 +33,48 @@ The manual check's denominator (9,647,598,426.64) was typed into the query by th
 
 ## Result
 The Claude measure matches the independent calculation and my Part A measure.
+
+## Queries I ran
+Paste each into DAX query view in `hw06.pbix` to reproduce the numbers above. The first three read the measure from the model.
+
+By year (all years):
+```dax
+EVALUATE SUMMARIZECOLUMNS ( dim_date[year], "Top 10 Share", FORMAT ( [Top 10 Client Share (Claude)], "0.000000" ) ) ORDER BY dim_date[year]
+```
+
+Grand total:
+```dax
+EVALUATE ROW ( "Grand total", FORMAT ( [Top 10 Client Share (Claude)], "0.000000" ) )
+```
+
+By tier, 2024:
+```dax
+EVALUATE SUMMARIZECOLUMNS ( dim_date[year], dim_client[client_tier], KEEPFILTERS ( FILTER ( VALUES ( dim_date[year] ), dim_date[year] = 2024 ) ), "Top 10 Share", FORMAT ( [Top 10 Client Share (Claude)], "0.000000" ) ) ORDER BY dim_client[client_tier]
+```
+
+2024, all tiers, with Ending AUM (equivalent form of the saved tab "measure by year (2024)", which defined the measure inline):
+```dax
+EVALUATE SUMMARIZECOLUMNS ( dim_date[year], FILTER ( ALL ( dim_date[year] ), dim_date[year] = 2024 ), "Ending AUM", [Ending AUM], "Top 10 Share", [Top 10 Client Share (Claude)] )
+```
+
+Independent manual check, UHNW, Dec 2024 (no measure logic; the denominator is typed in):
+```dax
+EVALUATE
+VAR d = DATE ( 2024, 12, 1 )
+VAR Clients =
+    CALCULATETABLE (
+        ADDCOLUMNS (
+            VALUES ( dim_client[client_id] ),
+            "@AUM", CALCULATE ( SUM ( fact_portfolio_snapshot[aum] ), fact_portfolio_snapshot[snapshot_date] = d )
+        ),
+        dim_client[client_tier] = "UHNW"
+    )
+VAR Top10 = TOPN ( 10, FILTER ( Clients, NOT ISBLANK ( [@AUM] ) ), [@AUM], DESC )
+RETURN
+    ROW ( "Top10 AUM", SUMX ( Top10, [@AUM] ), "Top10 share", DIVIDE ( SUMX ( Top10, [@AUM] ), 9647598426.64 ) )
+```
+
+Check on that denominator:
+```dax
+EVALUATE ROW ( "UHNW Dec 2024 AUM", CALCULATE ( SUM ( fact_portfolio_snapshot[aum] ), dim_client[client_tier] = "UHNW", fact_portfolio_snapshot[snapshot_date] = DATE ( 2024, 12, 1 ) ) )
+```
