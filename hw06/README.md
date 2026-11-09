@@ -58,6 +58,24 @@ The script was reviewed before the commit. This review was done in the same Clau
 
 No correctness problems were found. After the fixes the script was re-tested with tab- and comma-separated input, with deliberately wrong values (flagged correctly), and with a duplicate data file, and it still reports 83 of 83 on the real export.
 
+### Second review (separate Claude Code session)
+
+I then ran a second review in a fresh Claude Code session, read-only (it was told not to change files). It confirmed that the 83 rows match (largest difference 3.3e-5) and that the data is clean, and it listed ways the script could report a mismatch as a match:
+
+| Flagged | What I did |
+|---|---|
+| A required row missing from `powerbi_values.csv` passed when the pandas value was also blank | Fixed: a missing row is always a mismatch |
+| Non-numeric Power BI text (`19.58%`, `(Blank)`, `#ERROR`) was treated as blank and could pass | Fixed: it is a mismatch (Alpha Signal, which is text, is compared as text) |
+| Duplicate Power BI rows silently kept the first value | Fixed: conflicting duplicates stop the script; identical duplicates only warn |
+| A missing Power BI file did not stop the script, and the exit code was always 0 | Fixed: the script stops without writing, and exits with code 1 if any row does not match |
+| Two data files matching one table name only warned; a loose `prefix*` pattern could pick up other files | Fixed: the name must be `table.csv` or `table (n).csv`, and more than one match stops the script |
+| Joins to `dim_client` were not checked | Fixed: the join must be many-to-one, and facts with no matching client are reported |
+| Top 10 share used each client's own last snapshot for the numerator and the slice's last date for the denominator, copying how the DAX works | Fixed: both are read at the slice's last snapshot date, as the definition says |
+| Fixed tolerance is loose for small ratios | No change: the spec sets 0.0001 |
+| Suspect flag tested with `== 0`; exact date matching; exact transaction-type text; no explicit CSV types; hidden `PerformanceWarning` | No change: none of these affects this data (no blank flags, no time parts, no odd text), and the DAX uses the same conditions |
+
+After these fixes the script still reports 83 rows, 83 match, and `reports/measure_reconciliation.csv` is identical to the earlier output. I tested each new check on copies of the inputs with a deleted row, a text value, a conflicting duplicate, a missing file, a second data file, a duplicated client and a tampered number. Each one was caught.
+
 ## Part C: design questions
 Answers (a) to (d) are in `powerbi/measures.md`, each backed by pandas evidence from the same data.
 

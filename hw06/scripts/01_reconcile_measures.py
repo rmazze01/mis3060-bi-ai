@@ -13,8 +13,18 @@ Run from the hw06 folder:
 
 Tolerances: 0.01 for currency (and counts / basis points), 0.0001 for ratios.
 Alpha Signal is text and must match exactly.
+
+Strict checks (a row never passes by accident):
+  - every required (measure, slice) row must exist in powerbi_values.csv; a missing row is a
+    mismatch, even if the pandas value is blank
+  - a Power BI value that is not a number (e.g. "19.58%", "(Blank)", "#ERROR") is a mismatch,
+    except for Alpha Signal, which is text; an empty cell counts as blank
+  - duplicate (measure, slice) rows that disagree stop the script
+  - the script stops if powerbi_values.csv is missing or if a table name matches more than one CSV
+  - the exit code is 1 if any row does not match, 0 if all match
 """
 
+import re
 import sys
 import warnings
 from pathlib import Path
@@ -64,14 +74,27 @@ DEC_MEASURES = ["Ending AUM PM", "AUM MoM %"]
 
 # ---------------------------------------------------------------- load data
 def load_csv(prefix):
-    """Find <prefix>*.csv in the data folder (handles names like 'dim_date (1).csv')."""
-    matches = sorted(DATA_DIR.glob(prefix + "*.csv"))
+    """Find <prefix>.csv or <prefix> (n).csv in the data folder (e.g. 'dim_date (1).csv').
+    More than one match is an error, because the script cannot tell which one Power BI loaded."""
+    pattern = re.compile(r"^%s( \(\d+\))?\.csv$" % re.escape(prefix))
+    matches = sorted(p for p in DATA_DIR.glob("*.csv") if pattern.match(p.name))
     if not matches:
-        sys.exit("Could not find %s*.csv in %s" % (prefix, DATA_DIR))
+        sys.exit("ERROR: could not find %s.csv (or '%s (1).csv') in %s" % (prefix, prefix, DATA_DIR))
     if len(matches) > 1:
-        print("WARNING: %d files match %s*.csv (%s). Using %s."
-              % (len(matches), prefix, ", ".join(m.name for m in matches), matches[0].name))
+        sys.exit("ERROR: %d files match the table %s (%s). Keep only the one Power BI loaded."
+                 % (len(matches), prefix, ", ".join(m.name for m in matches)))
     return pd.read_csv(matches[0])
+
+
+def attach_tier(df, client, name):
+    """Join client_tier onto a fact table. client_id must be unique in dim_client
+    (many_to_one); facts whose client_id is not in dim_client are reported."""
+    out = df.merge(client, on="client_id", how="left", validate="many_to_one")
+    orphans = int(out["client_tier"].isna().sum())
+    if orphans:
+        print("WARNING: %d rows in %s have a client_id that is not in dim_client; they have no "
+              "tier and are left out of the tier slices." % (orphans, name))
+    return out
 
 
 def load_all():
@@ -81,15 +104,15 @@ def load_all():
 
     snap = load_csv("fact_portfolio_snapshot")
     snap["snapshot_date"] = pd.to_datetime(snap["snapshot_date"])
-    snap = snap.merge(client, on="client_id", how="left")
+    snap = attach_tier(snap, client, "fact_portfolio_snapshot")
 
     fees = load_csv("fact_fees")
     fees["fee_date"] = pd.to_datetime(fees["fee_date"])
-    fees = fees.merge(client, on="client_id", how="left")
+    fees = attach_tier(fees, client, "fact_fees")
 
     txn = load_csv("fact_transactions")
     txn["txn_date"] = pd.to_datetime(txn["txn_date"])
-    txn = txn.merge(client, on="client_id", how="left")
+    txn = attach_tier(txn, client, "fact_transactions")
     return dates, snap, fees, txn
 
 
@@ -169,9 +192,11 @@ def compute_measures(dates, tier):
         rows = snap[(snap["snapshot_date"] == last) & (snap["is_return_suspect"] == 0)]
         alpha = safe_div((rows["aum"] * rows["active_alpha_ytd"]).sum(), rows["aum"].sum())
 
-        # Top 10 client share: each client at their OWN last snapshot inside the window,
-        # the 10 largest, divided by the Ending AUM of the whole slice
-        per_client = snap.sort_values("snapshot_date").groupby("client_id")["aum"].last()
+        # Top 10 client share = share of Ending AUM held by the 10 largest clients.
+        # Numerator and denominator are both read at the slice's last snapshot date, so a
+        # client who left earlier in the window is in neither.
+        at_last = snap[snap["snapshot_date"] == last]
+        per_client = at_last.groupby("client_id")["aum"].sum()
         top10 = safe_div(per_client.nlargest(10).sum(), end_aum)
 
     return {
@@ -220,9 +245,8 @@ def build_pandas_rows():
 # ---------------------------------------------------------- Power BI values
 def load_powerbi_values():
     if not PBI_FILE.exists():
-        print("NOTE: %s not found. Writing pandas values only (every row will show match = False)."
-              % PBI_FILE)
-        return pd.DataFrame(columns=["measure", "slice", "powerbi_value"])
+        sys.exit("ERROR: %s not found. Export the Power BI values first (see README). "
+                 "Nothing was written." % PBI_FILE)
 
     # DAX query view copies results as tab-separated text; a saved CSV uses commas.
     # Decide from the header line instead of letting pandas guess.
@@ -242,11 +266,16 @@ def load_powerbi_values():
         raw[c] = raw[c].astype("string").str.strip().str.strip("\"'")
     raw = raw.rename(columns={"value": "powerbi_value"})
 
-    dupes = raw.duplicated(["measure", "slice"], keep="first")
+    dupes = raw.duplicated(["measure", "slice"], keep=False)
     if dupes.any():
-        print("WARNING: %d duplicate (measure, slice) rows in powerbi_values.csv; using the first."
-              % dupes.sum())
-        raw = raw[~dupes]
+        conflicts = raw[dupes].groupby(["measure", "slice"])["powerbi_value"].nunique()
+        conflicts = conflicts[conflicts > 1]
+        if len(conflicts):
+            sys.exit("ERROR: powerbi_values.csv has the same (measure, slice) with different "
+                     "values:\n%s" % conflicts.index.to_frame(index=False).to_string(index=False))
+        print("WARNING: %d identical duplicate rows in powerbi_values.csv; using one of each."
+              % int(raw.duplicated(["measure", "slice"], keep="first").sum()))
+        raw = raw.drop_duplicates(["measure", "slice"], keep="first")
     return raw
 
 
@@ -263,14 +292,21 @@ def to_number(v):
 
 
 # ---------------------------------------------------------------- reconcile
-def compare(measure, pbi, pdv):
+def compare(measure, pbi, pdv, row_present):
+    """pbi: float, NaN (empty cell) or text. row_present: False if the row is not in
+    powerbi_values.csv at all, which is always a mismatch."""
+    if not row_present:
+        return np.nan, False
+
     kind = MEASURE_KIND[measure]
     if kind == "text":
         a = None if (isinstance(pbi, float) and np.isnan(pbi)) else pbi
         b = None if (pdv is None or (isinstance(pdv, float) and np.isnan(pdv))) else pdv
         return np.nan, a == b
 
-    pbi_missing = isinstance(pbi, str) or pd.isna(pbi)
+    if isinstance(pbi, str):
+        return np.nan, False         # non-numeric text such as "19.58%" or "#ERROR"
+    pbi_missing = pd.isna(pbi)
     pdv_missing = pdv is None or pd.isna(pdv)
     if pbi_missing and pdv_missing:
         return np.nan, True          # both blank (e.g. YoY for 2020)
@@ -284,13 +320,14 @@ def compare(measure, pbi, pdv):
 def main():
     pandas_rows = build_pandas_rows()
     pbi = load_powerbi_values()
-    merged = pandas_rows.merge(pbi, on=["measure", "slice"], how="left")
+    merged = pandas_rows.merge(pbi, on=["measure", "slice"], how="left", indicator=True)
 
     out_rows = []
     for _, r in merged.iterrows():
         pbi_val = to_number(r.get("powerbi_value"))
         pdv = r["pandas_value"]
-        diff, ok = compare(r["measure"], pbi_val, pdv)
+        present = r["_merge"] == "both"
+        diff, ok = compare(r["measure"], pbi_val, pdv, present)
         out_rows.append({
             "measure": r["measure"],
             "slice": r["slice"],
@@ -315,10 +352,16 @@ def main():
     if len(extra):
         print("NOTE: %d rows in powerbi_values.csv were not used (not a required slice)." % len(extra))
 
+    missing = merged[merged["_merge"] != "both"][["measure", "slice"]]
+    if len(missing):
+        print("\nRows missing from powerbi_values.csv (counted as not matching):")
+        print(missing.to_string(index=False))
+
     bad = out[~out["match"]]
     if len(bad):
         print("\nRows that do not match:")
         print(bad.to_string(index=False))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
