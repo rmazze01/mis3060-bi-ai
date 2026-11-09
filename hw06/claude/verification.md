@@ -3,8 +3,10 @@
 ## Measure tested
 `Top 10 Client Share (Claude)`, the measure from the Claude chat in `dax_session.md`. It ranks each client's AUM at the last snapshot date in the filter, sums the top 10, and divides by the total of those client balances.
 
+It iterates over `dim_client[client_id]` rather than the `client_id` column in `fact_portfolio_snapshot`. `dim_client` has one row per client and holds `client_tier`, so the tier filter acts on the same table the measure iterates over, while the snapshot column repeats once per month. Clients with no snapshot in the period get a blank AUM, which the measure drops with `FILTER ... NOT ISBLANK`, so they can't affect the top 10 or the total.
+
 ## Did it run as written?
-Not at first. The first version used the variable name `LastDate`, which is a built-in DAX function, and the formula errored. I renamed the variable to `EndDate` and it ran. Nothing else was changed.
+Not at first. The first version used the variable name `LastDate`, which is the name of the built-in DAX function `LASTDATE`, and the formula showed a squiggle error. Claude renamed the variable to `EndDate` but left one reference inside `CALCULATE` still reading `= LastDate`, so it still errored. I sent Claude a screenshot, it found the missed line (follow-up #2 in `dax_session.md`), and after that the measure ran. Only the variable name changed; the logic is the same as Claude's first draft.
 
 ## What the tests returned
 - **Measure by year (2024):** Ending AUM 12,729,572,078.86, which matches pandas exactly. Top 10 Share displays as 0.06 (0.0616 at full precision).
