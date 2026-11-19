@@ -111,7 +111,7 @@ This is the text on the page. I made it year-neutral, because the slicer can sho
 
 **What it does:** `Growth Title` is a dynamic insight title for the waterfall (Format → Title → fx → Field value). It states the finding for whichever year is selected, so the title cannot disagree with the chart.
 
-**Claude's draft and my final DAX.** Claude Desktop wrote the measure, and I kept it as drafted. The two are the same text:
+**Claude's draft and my final DAX.** Claude Desktop wrote the measure. I used the draft as written until the design critique (Part E), then changed two phrases. The draft said "Markets drove" and "markets drove"; my final says "Market change drove" and "market change drove". The rest is identical. Final DAX:
 
 ```dax
 Growth Title =
@@ -128,21 +128,24 @@ RETURN
             yr & ": AUM fell " & FORMAT ( ABS ( growth ) / 1000000, "$#,0.0" )
                 & "M; net flows were " & FORMAT ( [Net Flows] / 1000000, "+$#,0.0;-$#,0.0" ) & "M",
         mktShare >= 0.5,
-            "Markets drove " & FORMAT ( mktShare, "0.0%" ) & " of " & yr
+            "Market change drove " & FORMAT ( mktShare, "0.0%" ) & " of " & yr
                 & " AUM growth; net new money drove " & FORMAT ( flowShare, "0.0%" ),
         "New money drove " & FORMAT ( flowShare, "0.0%" ) & " of " & yr
-            & " AUM growth; markets drove " & FORMAT ( mktShare, "0.0%" )
+            & " AUM growth; market change drove " & FORMAT ( mktShare, "0.0%" )
     )
 ```
 
 **How it works:** it first guards the cases where the sentence would be wrong, and only then picks a message. With no prior year it asks for a later year. When AUM fell it says so, because shares of a negative total (for example 150% and −50%) are meaningless. Otherwise it leads with whichever of markets or new money is larger.
 
 **What I tested.** I selected three years and compared each title with the numbers on the page:
-- **2024:** "Markets drove 96.3% of 2024 AUM growth; net new money drove 3.7%". This matches the waterfall ($2,007.1M of $2,084.6M growth is market change, $77.5M is net flows).
-- **2022** (AUM fell by $702.1M): the "AUM fell" message appears, not a share.
+- **2024:** "Market change drove 96.3% of 2024 AUM growth; net new money drove 3.7%". This matches the waterfall ($2,007.1M of $2,084.6M growth is market change, $77.5M is net flows).
+- **2022** (AUM fell by $702.1M): "2022: AUM fell $702.1M; net flows were +$75.6M". This matches the waterfall (net flows $75.6M, market change ($777.7M), total ($702.1M)), and it shows the "AUM fell" message instead of shares of a negative total.
 - **2020** (no prior year): the "Select a year after 2020" message appears.
 
-**What I changed and why.** I did not change the measure itself, because the guard cases and the number formats already behaved correctly in all three tests. The 2020 test did show a problem in another measure that feeds the same visual. The waterfall plotted a Market change of $8,083.8M for 2020 while the title correctly said there was no prior year. DAX treats a blank `Ending AUM LY` as 0, so `Market Change` became the whole balance minus net flows. I added the same guard to `Driver Amount`, the measure the waterfall plots:
+**What I changed and why.**
+
+1. **The wording, after the Claude design critique.** The draft said "Markets drove 96.3%". Claude's critique pointed out that `Market Change` is a residual that also contains fees and cash effects, so "markets" overstates what was measured. I changed it to "Market change drove" (the logic is unchanged), which says only what the measure is, and kept the caveat text box on the page.
+2. **A guard in a different measure.** The guard cases and number formats in `Growth Title` behaved correctly in all three tests. The 2020 test did show a problem in another measure that feeds the same visual. The waterfall plotted a Market change of $8,083.8M for 2020 while the title correctly said there was no prior year. DAX treats a blank `Ending AUM LY` as 0, so `Market Change` became the whole balance minus net flows. I added the same guard to `Driver Amount`, the measure the waterfall plots:
 
 ```dax
 Driver Amount =
@@ -159,7 +162,7 @@ Now the waterfall shows nothing in 2020, which agrees with the title. The `Marke
 | Plan | What I built | Why |
 |---|---|---|
 | KPI cards | One table visual as the KPI strip (Ending AUM, AUM YoY %, Net Flows, Market Change, Organic Growth Rate) | Card visuals render blank in Apporto, as in HW6 |
-| Accent color on every visual, including the waterfall | Net flows blue and market change grey on the tier and region charts. The waterfall stays neutral | The native waterfall cannot color individual bars, so the accent could not be applied there |
+| Accent color on every visual, including the waterfall | Net flows blue and market change grey on the tier and region charts. The waterfall stays neutral in growth years. In a year when AUM fell, its decrease bar uses Power BI's decrease color (pink, as in 2022) | The native waterfall colors bars by increase, decrease and total, not by driver, so the net-flows accent could not be applied there |
 | Shares and totals as labels on the bars, as drawn in Claude's prototypes | The shares appear in the dynamic title and the alt text instead | Power BI's native labels do not draw "%" shares or the totals shown in the prototypes (error 2 above) |
 | Year and region slicers sync to Page 2 | No slicer sync. **Keep all filters** on the drill-through carries the year and region | Keep all filters already does what the sync was for |
 | Region slicer does not filter the region chart | It does filter it (the default). Picking a region shows that region's bar | Not needed to answer the question. Documented in the filter audit |

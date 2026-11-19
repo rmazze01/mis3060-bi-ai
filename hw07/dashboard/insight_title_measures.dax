@@ -1,0 +1,89 @@
+// HW7 Part E: changes accepted from the Claude design critique (dynamic titles).
+//
+// Step 1: paste this whole file into a new DAX query tab and click Run. Nothing is added yet.
+//         The result is one row of three text values for 2024.
+// Step 2: when they match the expected text below, click "Update model with changes".
+//         This adds Tier Title and Region Title, and overwrites Growth Title with the reworded version.
+// Step 3: select each chart -> Format -> General -> Title -> Text -> fx -> Field value ->
+//           waterfall: Growth Title | tier chart: Tier Title | region chart: Region Title
+//
+// Expected text for 2024:
+//   Growth Title  Market change drove 96.3% of 2024 AUM growth; net new money drove 3.7%
+//   Tier Title    Retail relied most on new money: 51.6% of its 2024 growth, vs. 3.7% overall
+//   Region Title  Northeast produced 35.3% of 2024 AUM growth ($735.3M)
+// For 2020 (no prior year) all three ask for a later year. In a year when AUM fell, each says so
+// instead of showing shares of a negative total. With one region selected, Region Title names it.
+
+DEFINE
+    MEASURE _Measures[Growth Title] =
+        VAR yr = SELECTEDVALUE ( dim_date[year] )
+        VAR growth = [Ending AUM] - [Ending AUM LY]
+        VAR mktShare = DIVIDE ( [Market Change], growth )
+        VAR flowShare = DIVIDE ( [Net Flows], growth )
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( yr ) || ISBLANK ( [Ending AUM LY] ),
+                    "Select a year after 2020 to see where growth came from",
+                growth <= 0,
+                    yr & ": AUM fell " & FORMAT ( ABS ( growth ) / 1000000, "$#,0.0" )
+                        & "M; net flows were " & FORMAT ( [Net Flows] / 1000000, "+$#,0.0;-$#,0.0" ) & "M",
+                mktShare >= 0.5,
+                    "Market change drove " & FORMAT ( mktShare, "0.0%" ) & " of " & yr
+                        & " AUM growth; net new money drove " & FORMAT ( flowShare, "0.0%" ),
+                "New money drove " & FORMAT ( flowShare, "0.0%" ) & " of " & yr
+                    & " AUM growth; market change drove " & FORMAT ( mktShare, "0.0%" )
+            )
+
+    MEASURE _Measures[Tier Title] =
+        VAR yr = SELECTEDVALUE ( dim_date[year] )
+        VAR overall = CALCULATE ( DIVIDE ( [Net Flows], [AUM Growth] ), ALL ( dim_client[client_tier] ) )
+        VAR tiers =
+            ADDCOLUMNS (
+                ALLSELECTED ( dim_client[client_tier] ),
+                "@Share", IF ( [AUM Growth] > 0, DIVIDE ( [Net Flows], [AUM Growth] ) )
+            )
+        VAR topRow = TOPN ( 1, tiers, [@Share], DESC )
+        VAR topTier = MAXX ( topRow, dim_client[client_tier] )
+        VAR topShare = MAXX ( topRow, [@Share] )
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( yr ) || ISBLANK ( [Ending AUM LY] ),
+                    "Select a year after 2020 to compare tiers",
+                [AUM Growth] <= 0,
+                    yr & ": AUM fell, so shares of growth are not shown",
+                topTier & " relied most on new money: " & FORMAT ( topShare, "0.0%" ) & " of its " & yr
+                    & " growth, vs. " & FORMAT ( overall, "0.0%" ) & " overall"
+            )
+
+    MEASURE _Measures[Region Title] =
+        VAR yr = SELECTEDVALUE ( dim_date[year] )
+        VAR regions = ALLSELECTED ( dim_advisor[region] )
+        VAR topRegion = MAXX ( TOPN ( 1, regions, [AUM Growth], DESC ), dim_advisor[region] )
+        VAR topGrowth = CALCULATE ( [AUM Growth], dim_advisor[region] = topRegion )
+        VAR totalGrowth = CALCULATE ( [AUM Growth], ALLSELECTED ( dim_advisor[region] ) )
+        VAR topFlows = CALCULATE ( [Net Flows], dim_advisor[region] = topRegion )
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( yr ) || ISBLANK ( [Ending AUM LY] ),
+                    "Select a year after 2020 to compare regions",
+                [AUM Growth] <= 0,
+                    yr & ": AUM fell; see the waterfall for the split",
+                COUNTROWS ( regions ) = 1,
+                    topRegion & ", " & yr & ": AUM grew " & FORMAT ( topGrowth / 1000000, "$#,0.0" )
+                        & "M, of which net flows " & FORMAT ( topFlows / 1000000, "$#,0.0" ) & "M",
+                topRegion & " produced " & FORMAT ( DIVIDE ( topGrowth, totalGrowth ), "0.0%" ) & " of " & yr
+                    & " AUM growth (" & FORMAT ( topGrowth / 1000000, "$#,0.0" ) & "M)"
+            )
+
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "Growth Title", [Growth Title],
+        "Tier Title", [Tier Title],
+        "Region Title", [Region Title]
+    ),
+    dim_date[year] = 2024
+)
