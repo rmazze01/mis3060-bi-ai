@@ -103,8 +103,67 @@ Claude did avoid the main trap: it did not add `ending_aum` across years, and it
 
 ## Market Change caveat (text box on Page 1)
 
-"Market Change is the part of 2024's AUM change not explained by net flows: (Ending AUM − Ending AUM last year) − Net Flows. It includes investment performance, fees and other cash effects, and it is not a measured market return. No clients joined or left in 2024."
+"Market Change = (Ending AUM − Ending AUM last year) − Net Flows: the part of the year's AUM change not explained by net flows. It includes investment performance, fees and other cash effects, and is not a measured market return. In 2021–2023 it also includes balances of clients who joined or left; none joined or left in 2024."
+
+This is the text on the page. I made it year-neutral, because the slicer can show any year, and added the joined-or-left point from the Claude Code review of `00_make_extract.py`.
 
 ## 6. Claude-assisted formatting measure
 
-_To be added after Page 1 is built: Claude's draft, my final DAX, and what I changed and why._
+**What it does:** `Growth Title` is a dynamic insight title for the waterfall (Format → Title → fx → Field value). It states the finding for whichever year is selected, so the title cannot disagree with the chart.
+
+**Claude's draft and my final DAX.** Claude Desktop wrote the measure, and I kept it as drafted. The two are the same text:
+
+```dax
+Growth Title =
+VAR yr = SELECTEDVALUE ( dim_date[year] )
+VAR growth = [Ending AUM] - [Ending AUM LY]
+VAR mktShare = DIVIDE ( [Market Change], growth )
+VAR flowShare = DIVIDE ( [Net Flows], growth )
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( yr ) || ISBLANK ( [Ending AUM LY] ),
+            "Select a year after 2020 to see where growth came from",
+        growth <= 0,
+            yr & ": AUM fell " & FORMAT ( ABS ( growth ) / 1000000, "$#,0.0" )
+                & "M; net flows were " & FORMAT ( [Net Flows] / 1000000, "+$#,0.0;-$#,0.0" ) & "M",
+        mktShare >= 0.5,
+            "Markets drove " & FORMAT ( mktShare, "0.0%" ) & " of " & yr
+                & " AUM growth; net new money drove " & FORMAT ( flowShare, "0.0%" ),
+        "New money drove " & FORMAT ( flowShare, "0.0%" ) & " of " & yr
+            & " AUM growth; markets drove " & FORMAT ( mktShare, "0.0%" )
+    )
+```
+
+**How it works:** it first guards the cases where the sentence would be wrong, and only then picks a message. With no prior year it asks for a later year. When AUM fell it says so, because shares of a negative total (for example 150% and −50%) are meaningless. Otherwise it leads with whichever of markets or new money is larger.
+
+**What I tested.** I selected three years and compared each title with the numbers on the page:
+- **2024:** "Markets drove 96.3% of 2024 AUM growth; net new money drove 3.7%". This matches the waterfall ($2,007.1M of $2,084.6M growth is market change, $77.5M is net flows).
+- **2022** (AUM fell by $702.1M): the "AUM fell" message appears, not a share.
+- **2020** (no prior year): the "Select a year after 2020" message appears.
+
+**What I changed and why.** I did not change the measure itself, because the guard cases and the number formats already behaved correctly in all three tests. The 2020 test did show a problem in another measure that feeds the same visual. The waterfall plotted a Market change of $8,083.8M for 2020 while the title correctly said there was no prior year. DAX treats a blank `Ending AUM LY` as 0, so `Market Change` became the whole balance minus net flows. I added the same guard to `Driver Amount`, the measure the waterfall plots:
+
+```dax
+Driver Amount =
+IF ( ISBLANK ( [Ending AUM LY] ), BLANK (),
+    SWITCH ( SELECTEDVALUE ( Driver[Driver] ), "Net flows", [Net Flows], "Market change", [Market Change] ) )
+```
+
+Now the waterfall shows nothing in 2020, which agrees with the title. The `Market Change` measure is left exactly as the brief defines it, so the KPI table still shows an unguarded value for 2020 (listed as a known limit in the filter audit in `README.md`). The page is saved on 2024, and the reconciliation covers 2024 only.
+
+**A limit I did not fix.** When the waterfall is filtered to one tier (by clicking the tier chart) or one region (the region slicer), the title gives the shares for that selection but does not name it. The slicer shows the region, but a clicked tier is only highlighted in the chart.
+
+### Where the build differed from the plan
+
+| Plan | What I built | Why |
+|---|---|---|
+| KPI cards | One table visual as the KPI strip (Ending AUM, AUM YoY %, Net Flows, Market Change, Organic Growth Rate) | Card visuals render blank in Apporto, as in HW6 |
+| Accent color on every visual, including the waterfall | Net flows blue and market change grey on the tier and region charts. The waterfall stays neutral | The native waterfall cannot color individual bars, so the accent could not be applied there |
+| Shares and totals as labels on the bars, as drawn in Claude's prototypes | The shares appear in the dynamic title and the alt text instead | Power BI's native labels do not draw "%" shares or the totals shown in the prototypes (error 2 above) |
+| Year and region slicers sync to Page 2 | No slicer sync. **Keep all filters** on the drill-through carries the year and region | Keep all filters already does what the sync was for |
+| Region slicer does not filter the region chart | It does filter it (the default). Picking a region shows that region's bar | Not needed to answer the question. Documented in the filter audit |
+| Tier and region clicks leave the KPI cards unchanged | Built: tier chart → KPI table and region chart → KPI table are both **None** | As planned. I found the region chart one missing in the first audit and fixed it |
+| Tooltip on the tier bars | Not built | The assignment lists it as optional |
+
+The interactions are listed in full in the filter audit in `README.md`.

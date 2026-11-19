@@ -1,0 +1,60 @@
+// HW7 Part D, item 1: read every Power BI value that gets reconciled (2024 only).
+//
+// How to use
+//   1. Power BI -> DAX query view -> paste this whole file -> Run.
+//   2. Click the three dots on the result table -> Copy (or Export), and paste into a new file
+//      reports/powerbi_values.csv in the hw07 folder. The first line must be the header
+//      [measure]  [slice]  [value]  (tab-separated, as in Assignment 6).
+//   3. Nothing in this query changes the model. It only reads the measures.
+//
+// Slices
+//   Year 2024                  the firm-level Page 1 cards
+//   Tier <tier> | Year 2024    flows/market split for each tier (Retail also has the Page 2 cards)
+//   Region <region> | Year 2024  flows/market split for each region (dim_advisor[region])
+//
+EVALUATE
+UNION (
+    ROW ( "measure", "Ending AUM", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "AUM YoY %", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [AUM YoY %], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "Organic Growth Rate", "slice", "Year 2024", "value", FORMAT ( CALCULATE ( [Organic Growth Rate], dim_date[year] = 2024 ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Tier HNW | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_client[client_tier] = "HNW" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Tier HNW | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_client[client_tier] = "HNW" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Tier HNW | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_client[client_tier] = "HNW" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Tier HNW | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_client[client_tier] = "HNW" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Ending Clients", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Ending Clients], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Avg AUM per Client", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Avg AUM per Client], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Fee Yield (bps)", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [Fee Yield (bps)], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "AUM-Weighted Alpha", "slice", "Tier Retail | Year 2024", "value", FORMAT ( CALCULATE ( [AUM-Weighted Alpha], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ), "0.000000" ) ),
+    ROW ( "measure", "Alpha Signal", "slice", "Tier Retail | Year 2024", "value", CALCULATE ( [Alpha Signal], dim_date[year] = 2024, dim_client[client_tier] = "Retail" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Tier UHNW | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_client[client_tier] = "UHNW" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Tier UHNW | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_client[client_tier] = "UHNW" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Tier UHNW | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_client[client_tier] = "UHNW" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Tier UHNW | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_client[client_tier] = "UHNW" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Region Mid-Atlantic | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_advisor[region] = "Mid-Atlantic" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Region Mid-Atlantic | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_advisor[region] = "Mid-Atlantic" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Region Mid-Atlantic | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_advisor[region] = "Mid-Atlantic" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Region Mid-Atlantic | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_advisor[region] = "Mid-Atlantic" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Region Midwest | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_advisor[region] = "Midwest" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Region Midwest | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_advisor[region] = "Midwest" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Region Midwest | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_advisor[region] = "Midwest" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Region Midwest | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_advisor[region] = "Midwest" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Region Northeast | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_advisor[region] = "Northeast" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Region Northeast | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_advisor[region] = "Northeast" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Region Northeast | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_advisor[region] = "Northeast" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Region Northeast | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_advisor[region] = "Northeast" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Region Southeast | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_advisor[region] = "Southeast" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Region Southeast | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_advisor[region] = "Southeast" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Region Southeast | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_advisor[region] = "Southeast" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Region Southeast | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_advisor[region] = "Southeast" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM", "slice", "Region West | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM], dim_date[year] = 2024, dim_advisor[region] = "West" ), "0.000000" ) ),
+    ROW ( "measure", "Ending AUM LY", "slice", "Region West | Year 2024", "value", FORMAT ( CALCULATE ( [Ending AUM LY], dim_date[year] = 2024, dim_advisor[region] = "West" ), "0.000000" ) ),
+    ROW ( "measure", "Net Flows", "slice", "Region West | Year 2024", "value", FORMAT ( CALCULATE ( [Net Flows], dim_date[year] = 2024, dim_advisor[region] = "West" ), "0.000000" ) ),
+    ROW ( "measure", "Market Change", "slice", "Region West | Year 2024", "value", FORMAT ( CALCULATE ( [Market Change], dim_date[year] = 2024, dim_advisor[region] = "West" ), "0.000000" ) )
+)

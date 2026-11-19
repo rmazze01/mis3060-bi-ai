@@ -1,0 +1,97 @@
+// HW7: measures to add to the _Measures table of hw07.pbix, using DAX query view.
+//
+// Already in the model and kept as they are: Ending AUM, Net Flows ( [Deposit] - [Withdraws] ), Total Fees.
+// Replaced: AUM-Weighted Alpha. The ICE 12 version is not limited to the last snapshot and does not exclude
+//           suspect returns, so it would not match the HW6 pandas numbers.
+// New: Ending AUM LY, AUM YoY %, Ending Clients, Avg AUM per Client, Fee Yield (bps), Organic Growth Rate,
+//      Alpha Signal, Top 10 Client Share, Market Change.
+// These are the HW6 definitions (reconciled to pandas in Assignment 6) plus Market Change from the HW7 brief.
+//
+// Step 1: run this query as it is. The EVALUATE at the bottom returns the 2024 values, which you compare with the
+//         expected values listed there. Nothing is added to the model by running it.
+// Step 2: when the values match, use the "Update model" links that DAX query view shows above the DEFINE block
+//         ("Update model: Add all new measures"; the AUM-Weighted Alpha line says overwrite).
+
+DEFINE
+    MEASURE _Measures[Ending AUM LY] =
+        CALCULATE ( [Ending AUM], SAMEPERIODLASTYEAR ( dim_date[date] ) )
+
+    MEASURE _Measures[AUM YoY %] =
+        DIVIDE ( [Ending AUM] - [Ending AUM LY], [Ending AUM LY] )
+
+    MEASURE _Measures[Ending Clients] =
+        CALCULATE (
+            DISTINCTCOUNT ( fact_portfolio_snapshot[client_id] ),
+            LASTNONBLANK ( dim_date[date], CALCULATE ( SUM ( fact_portfolio_snapshot[aum] ) ) )
+        )
+
+    MEASURE _Measures[Avg AUM per Client] =
+        DIVIDE ( [Ending AUM], [Ending Clients] )
+
+    MEASURE _Measures[Fee Yield (bps)] =
+        DIVIDE ( [Total Fees] * 12 * 10000, SUM ( fact_portfolio_snapshot[aum] ) )
+
+    MEASURE _Measures[Organic Growth Rate] =
+        DIVIDE ( [Net Flows], [Ending AUM LY] )
+
+    MEASURE _Measures[AUM-Weighted Alpha] =
+        CALCULATE (
+            DIVIDE (
+                SUMX ( fact_portfolio_snapshot, fact_portfolio_snapshot[aum] * fact_portfolio_snapshot[active_alpha_ytd] ),
+                SUMX ( fact_portfolio_snapshot, fact_portfolio_snapshot[aum] )
+            ),
+            fact_portfolio_snapshot[is_return_suspect] = 0,
+            LASTNONBLANK ( dim_date[date], CALCULATE ( SUM ( fact_portfolio_snapshot[aum] ) ) )
+        )
+
+    MEASURE _Measures[Alpha Signal] =
+        VAR Alpha = [AUM-Weighted Alpha]
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( Alpha ), BLANK (),
+                Alpha >= 0.02, "Outperforming",
+                Alpha <= -0.02, "Lagging",
+                "In line"
+            )
+
+    MEASURE _Measures[Top 10 Client Share] =
+        DIVIDE (
+            SUMX ( TOPN ( 10, VALUES ( dim_client[client_id] ), [Ending AUM], DESC ), [Ending AUM] ),
+            [Ending AUM]
+        )
+
+    MEASURE _Measures[Market Change] =
+        ( [Ending AUM] - [Ending AUM LY] ) - [Net Flows]
+
+// Test: firm total for 2024. Expected values (from the HW6 pandas reconciliation and the extract):
+//   Ending AUM            12,729,572,078.86
+//   Ending AUM LY         10,644,971,737.00
+//   AUM YoY %             0.195830
+//   Ending Clients        2,325
+//   Avg AUM per Client    5,475,084.77 (approximately)
+//   Fee Yield (bps)       43.154344
+//   Net Flows             77,513,055.26
+//   Organic Growth Rate   0.007282
+//   Market Change         2,007,087,286.60
+//   AUM-Weighted Alpha    0.014480
+//   Alpha Signal          In line
+//   Top 10 Client Share   about 0.06 (2024 firm value is checked in Part D)
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "Ending AUM", [Ending AUM],
+        "Ending AUM LY", [Ending AUM LY],
+        "AUM YoY %", [AUM YoY %],
+        "Ending Clients", [Ending Clients],
+        "Avg AUM per Client", [Avg AUM per Client],
+        "Fee Yield (bps)", [Fee Yield (bps)],
+        "Net Flows", [Net Flows],
+        "Organic Growth Rate", [Organic Growth Rate],
+        "Market Change", [Market Change],
+        "AUM-Weighted Alpha", [AUM-Weighted Alpha],
+        "Alpha Signal", [Alpha Signal],
+        "Top 10 Client Share", [Top 10 Client Share]
+    ),
+    dim_date[year] = 2024
+)

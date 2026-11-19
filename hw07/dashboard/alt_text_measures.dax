@@ -1,0 +1,98 @@
+// HW7 Page 1: dynamic alt text measures (one per data visual) plus a helper measure.
+//
+// Step 1: paste this whole file into DAX query view and click Run. Nothing is added to the model yet.
+//         The result is one row of five text values for 2024. Compare each with the expected text below.
+// Step 2: when they match, click "Update model with changes" to add the six measures.
+// Step 3: in the report, select a visual -> Format -> General -> Alt text -> fx -> Field value -> pick its measure.
+//
+// Expected text for 2024:
+//   Alt KPI       KPI table for 2024: Ending AUM $12.73B, +19.6% vs. prior year; net flows $77.5M; market change $2,007.1M; organic growth rate 0.73%.
+//   Alt Waterfall Waterfall chart, 2024: net flows $77.5M and market change $2,007.1M make up total AUM growth of $2,084.6M.
+//   Alt Tier      100% stacked bar by client tier, 2024: net flows as a share of AUM growth: Retail 51.6%, HNW 6.0%, UHNW 0.5%. The rest is market change.
+//   Alt Region    Stacked bar of net flows and market change by region, 2024. Largest growth: Northeast, $735.3M, of which net flows $32.2M.
+// For 2020 (no prior year) they say there is no prior year to compare. For a year when AUM fell (2022) the
+// tier text points to the waterfall because shares of a negative total are not meaningful.
+
+DEFINE
+    MEASURE _Measures[AUM Growth] =
+        [Ending AUM] - [Ending AUM LY]
+
+    MEASURE _Measures[Alt KPI] =
+        VAR yr = SELECTEDVALUE ( dim_date[year], "2020–2024" )
+        RETURN
+            IF (
+                ISBLANK ( [Ending AUM LY] ),
+                "KPI table for " & yr & ": Ending AUM " & FORMAT ( [Ending AUM] / 1000000000, "$0.00" )
+                    & "B. No prior year to compare.",
+                "KPI table for " & yr & ": Ending AUM " & FORMAT ( [Ending AUM] / 1000000000, "$0.00" ) & "B, "
+                    & FORMAT ( [AUM YoY %], "+0.0%;-0.0%" ) & " vs. prior year; net flows "
+                    & FORMAT ( [Net Flows] / 1000000, "$#,0.0;-$#,0.0" ) & "M; market change "
+                    & FORMAT ( [Market Change] / 1000000, "$#,0.0;-$#,0.0" ) & "M; organic growth rate "
+                    & FORMAT ( [Organic Growth Rate], "0.00%" ) & "."
+            )
+
+    MEASURE _Measures[Alt Waterfall] =
+        VAR yr = SELECTEDVALUE ( dim_date[year], "2020–2024" )
+        RETURN
+            IF (
+                ISBLANK ( [Ending AUM LY] ),
+                "Waterfall chart, " & yr & ": no prior year to compare, so no growth split is shown.",
+                "Waterfall chart, " & yr & ": net flows " & FORMAT ( [Net Flows] / 1000000, "$#,0.0;-$#,0.0" )
+                    & "M and market change " & FORMAT ( [Market Change] / 1000000, "$#,0.0;-$#,0.0" )
+                    & "M make up total AUM growth of " & FORMAT ( [AUM Growth] / 1000000, "$#,0.0;-$#,0.0" ) & "M."
+            )
+
+    MEASURE _Measures[Alt Tier] =
+        VAR yr = SELECTEDVALUE ( dim_date[year], "2020–2024" )
+        VAR shareRetail =
+            DIVIDE (
+                CALCULATE ( [Net Flows], dim_client[client_tier] = "Retail" ),
+                CALCULATE ( [AUM Growth], dim_client[client_tier] = "Retail" )
+            )
+        VAR shareHNW =
+            DIVIDE (
+                CALCULATE ( [Net Flows], dim_client[client_tier] = "HNW" ),
+                CALCULATE ( [AUM Growth], dim_client[client_tier] = "HNW" )
+            )
+        VAR shareUHNW =
+            DIVIDE (
+                CALCULATE ( [Net Flows], dim_client[client_tier] = "UHNW" ),
+                CALCULATE ( [AUM Growth], dim_client[client_tier] = "UHNW" )
+            )
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( [Ending AUM LY] ),
+                    "100% stacked bar by client tier, " & yr & ": no prior year to compare.",
+                [AUM Growth] <= 0,
+                    "100% stacked bar by client tier, " & yr & ": total AUM fell, so shares of growth are not shown; see the waterfall.",
+                "100% stacked bar by client tier, " & yr & ": net flows as a share of AUM growth: Retail "
+                    & FORMAT ( shareRetail, "0.0%" ) & ", HNW " & FORMAT ( shareHNW, "0.0%" ) & ", UHNW "
+                    & FORMAT ( shareUHNW, "0.0%" ) & ". The rest is market change."
+            )
+
+    MEASURE _Measures[Alt Region] =
+        VAR yr = SELECTEDVALUE ( dim_date[year], "2020–2024" )
+        VAR topRegion =
+            MAXX ( TOPN ( 1, ALLSELECTED ( dim_advisor[region] ), [AUM Growth], DESC ), dim_advisor[region] )
+        VAR topGrowth = CALCULATE ( [AUM Growth], dim_advisor[region] = topRegion )
+        VAR topFlows = CALCULATE ( [Net Flows], dim_advisor[region] = topRegion )
+        RETURN
+            IF (
+                ISBLANK ( [Ending AUM LY] ),
+                "Stacked bar by region, " & yr & ": no prior year to compare.",
+                "Stacked bar of net flows and market change by region, " & yr & ". Largest growth: " & topRegion & ", "
+                    & FORMAT ( topGrowth / 1000000, "$#,0.0;-$#,0.0" ) & "M, of which net flows "
+                    & FORMAT ( topFlows / 1000000, "$#,0.0;-$#,0.0" ) & "M."
+            )
+
+EVALUATE
+CALCULATETABLE (
+    ROW (
+        "Alt KPI", [Alt KPI],
+        "Alt Waterfall", [Alt Waterfall],
+        "Alt Tier", [Alt Tier],
+        "Alt Region", [Alt Region]
+    ),
+    dim_date[year] = 2024
+)
