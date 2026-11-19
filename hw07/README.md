@@ -97,4 +97,35 @@ I tested the changes by breaking things on purpose: a wrong region flow, a perce
 
 ## Filter audit
 
-_To be filled in (Part D, item 4)._
+I listed every filter and edited interaction from the saved `hw07.pbix` (the Filters pane and Edit interactions for each page, checked against the report definition inside the file).
+
+**Report level:** no filters.
+
+### Page 1: Growth Drivers
+
+| Level | Filter or interaction | Effect | Changes a number silently? |
+|---|---|---|---|
+| Page | None | n/a | n/a |
+| Visual | Year slicer: `dim_date[year]` is not (Blank), saved with 2024 selected | Hides a (Blank) tile that has no data behind it. The slicer is single-select, so the page shows one year | No. Only the empty tile is removed, and the selected year is visible on the slicer |
+| Slicer | Year slicer filters every visual on the page (default) | Every number is for the year selected | No. The year is visible on the slicer, and the alt text names it |
+| Slicer | Region slicer (`dim_advisor[region]`) filters every visual on the page, including the region chart (default; not edited) | With a region picked, all visuals show that region, and the region chart shows only that region's bar. With All, they show the firm | No. The selection is visible on the slicer. I did not set the region chart to ignore it |
+| Edited | Tier chart → KPI table: **None** | Clicking a tier does not change the KPI table, which stays at the selected year and region | No. This prevents a silent change |
+| Edited | Tier chart → region chart: **None** | Clicking a tier does not change the region chart | No |
+| Edited | Tier chart → waterfall: **Filter** (default) | The waterfall shows the clicked tier's split | No. This is the intended drill into one tier |
+| Edited | Region chart → KPI table: **None** | Clicking a region bar does not change the KPI table. I found this one missing in the first audit (clicking a region bar changed Net Flows and Market Change) and fixed it | No, after the fix |
+| Default | Region chart → waterfall and tier chart: **Filter** | Clicking a region bar shows that region's split in the waterfall and the tier chart | No. This is the intended drill into one region |
+| Default | Tier chart → page title text box: Filter | The title text is static, so nothing changes | No |
+
+### Page 2: Segment Detail
+
+| Level | Filter or interaction | Effect | Changes a number silently? |
+|---|---|---|---|
+| Page | Drill-through filter `dim_client[client_tier]` (saved with HNW selected; replaced by whichever tier is drilled into). **Keep all filters** is on, so the year and region selected on Page 1 also carry over | Every visual on the page is for one tier, in the year (and region) chosen on Page 1 | No. The subtitle states the segment and year |
+| Visual | Top 10 clients table: Top N filter, 10 `client_id` by Ending AUM | Shows the 10 largest clients in the segment. The Total row is switched off so the 10-client sum is not read as the segment total | No. The title says top 10 |
+| Visual | Segment AUM trend: no filter of its own | Because the year carries over from Page 1, the line is by month within the selected year (12 points), not by year | No. The title says "by month" |
+| Edited | None. Interactions on this page are the defaults | Clicking a client or point filters the other visuals on the page | No numbers change without a click, and a click is visible |
+
+### Known limits (not silent, but worth knowing)
+
+- **2020 has no prior year.** The waterfall and the KPI strip handle this differently. `Driver Amount` is blank when `Ending AUM LY` is blank, so the waterfall shows nothing. The KPI table's Market Change measure is exactly as the brief defines it, so in 2020 DAX treats the blank prior year as zero and it shows the whole balance as "change". The dashboard is saved on 2024, and the reconciliation covers 2024 only.
+- **Cards render blank in Apporto**, as in HW6, so the KPI strip is a table visual.
