@@ -1,8 +1,8 @@
 # Wildcat Capital: Where 2024 Growth Came From
 
-Wildcat Capital's AUM rose 19.58% in 2024, from $10,644,971,737 to $12,729,572,079, a gain of $2,084.6M. Growth came overwhelmingly from market change, not new money. Market Change contributed $2,007.1M (96.3% of growth), while net flows added just $77.5M (3.7%), an organic growth rate of 0.73%.
+Wildcat Capital's AUM rose 19.58% in 2024, from $10,644,971,737 to $12,729,572,079, a gain of $2,084.6M. Growth came mainly from market change, not new money. Market Change contributed $2,007.1M (96.3% of growth), while net flows added just $77.5M (3.7%), an organic growth rate of 0.73%.
 
-By client tier, UHNW drove the dollar growth. It holds 75.8% of AUM and generated $1,572.5M of Market Change against only $8.1M of net flows (0.5% of its growth). HNW also grew mainly through market change ($393.1M, against $25.2M of net flows, 6.0% of its growth). Retail is the exception: it holds 4.2% of AUM yet brought in 57.0% of the firm's net flows ($44.2M), and net flows were 51.6% of its growth.
+By client tier, UHNW contributed most to dollar growth. It holds 75.8% of AUM and generated $1,572.5M of Market Change against only $8.1M of net flows (0.5% of its growth). HNW also grew mainly through market change ($393.1M, against $25.2M of net flows, 6.0% of its growth). Retail is the exception: it holds 4.2% of AUM yet brought in 57.0% of the firm's net flows ($44.2M), and net flows were 51.6% of its growth.
 
 By region, the Northeast ($735.3M) and Mid-Atlantic ($621.0M) produced 65.1% of growth, followed by the Southeast ($496.0M), West ($171.8M) and Midwest ($60.5M).
 
@@ -23,12 +23,12 @@ Every number and claim in the summary, the Power BI measure behind it, and the r
 | 7 | net flows $77.5M | `Net Flows` | Net Flows \| Year 2024 = 77,513,055.26 | Correct |
 | 8 | 3.7% of growth | `Net Flows` ÷ growth | Derived: 77,513,055.26 ÷ 2,084,600,341.86 = 3.72% | Correct |
 | 9 | organic growth rate 0.73% | `Organic Growth Rate` | Organic Growth Rate \| Year 2024 = 0.007282 | Correct |
-| 10 | "Growth came overwhelmingly from market change, not new money" | `Market Change`, `Net Flows` | Rows 5 to 8 | **Corrected.** Claude's draft said "markets", which overstates a residual that also contains fees and cash effects. I changed it to "market change" |
+| 10 | "Growth came mainly from market change, not new money" | `Market Change`, `Net Flows` | Rows 5 to 8 | **Corrected.** Claude's draft said "markets", which overstates a residual that also contains fees and cash effects. I changed it to "market change" |
 | 11 | UHNW holds 75.8% of AUM | `Ending AUM` | Derived: Ending AUM \| Tier UHNW 9,647,598,426.64 ÷ Ending AUM \| Year 2024 12,729,572,078.86 = 75.79% | Correct |
 | 12 | UHNW Market Change $1,572.5M | `Market Change` | Market Change \| Tier UHNW \| Year 2024 = 1,572,474,887.34 | Correct |
 | 13 | UHNW net flows $8.1M | `Net Flows` | Net Flows \| Tier UHNW \| Year 2024 = 8,101,601.39 | Correct |
 | 14 | 0.5% of UHNW's growth | `Net Flows` ÷ growth | Derived: 8,101,601.39 ÷ (9,647,598,426.64 − 8,067,021,937.91 = 1,580,576,488.73) = 0.51% | Correct |
-| 15 | UHNW drove the dollar growth | `Ending AUM`, `Ending AUM LY` | Derived: UHNW growth 1,580.6M of 2,084.6M (75.8%), the largest of the three tiers | Correct |
+| 15 | UHNW contributed most to dollar growth | `Ending AUM`, `Ending AUM LY` | Derived: UHNW growth 1,580.6M of 2,084.6M (75.8%), the largest of the three tiers | Correct |
 | 16 | HNW Market Change $393.1M | `Market Change` | Market Change \| Tier HNW \| Year 2024 = 393,139,597.65 | Correct |
 | 17 | HNW net flows $25.2M | `Net Flows` | Net Flows \| Tier HNW \| Year 2024 = 25,227,406.26 | Correct |
 | 18 | 6.0% of HNW's growth | `Net Flows` ÷ growth | Derived: 25,227,406.26 ÷ (2,548,521,154.33 − 2,130,154,150.42 = 418,367,003.91) = 6.03% | Correct |
